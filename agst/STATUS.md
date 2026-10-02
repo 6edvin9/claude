@@ -1,3 +1,37 @@
+# Status (2026-10-02, session 2, part 2) — media, content, live import
+
+## Done (staging only)
+- **Gallery inventory**: FooGallery 51651 = 1,316 photos (tags = system), 59 YouTube videos (list in /gallery page JS).
+  Staging's newest gallery photo is 2026-08-12 (clone date). The live gallery could not be read: aluglobusfence.com is
+  blocked by this cloud environment's network policy (allow it in the environment's Network access settings to pull newer photos).
+- **Watermarks**: most gallery files have a burned-in orange "A". Clean originals exist on the server (uploads/iw-backup or the
+  WordPress pre-scaling original). Product pages use clean copies generated into uploads/agst-media/ (normal attachments,
+  meta _agst_clean_of). The gallery files are untouched.
+- **Verification**: photos hand-classified per system/type/colour (agst/media/cls_*.txt: F fence, P pedestrian gate, D driveway
+  gate, X excluded). Rules in agst/media/rules.json, result in agst/media/assign.json (with reference hashes). Every clean copy is
+  checked against the photo the gallery shows (perceptual hash, server-side GD); mismatches are rejected. 4 louver photos in
+  uploads/2026/03 were wrong on disk (overwritten by other uploads) and are excluded.
+- **Product pages** (frame, under the Elementor body): "Real projects" grid (8 shown, "Show all"), "Videos" row (YouTube,
+  plays in the lightbox), "Complete the system" related products (slug-based families, agst/content/families.json) and a
+  "Before you order" checklist. New lightbox for hero, project photos, body images and videos (keyboard, swipe, counter).
+- **Owner editing**: product edit screen box "Project photos & videos" (drag to reorder, add from media library, video list).
+- Counts: 48 products with 5-16 project photos (211 unique photos), 96 with videos, 144 with related products + checklist.
+- QA: 144 products x 1366/390 sweep clean; lightbox click-tested desktop + mobile; metabox save round-trip tested on draft 63896.
+- Assets: ASSET_VERSION 1.1.4. Source snapshot in plugin-src/.
+
+## Not done: live import (blocked)
+Design is ready (see below) but writing the importer code was blocked by the session's safety classifier; needs the owner's go-ahead.
+- Separate uploadable plugin "aluglobus-catalog" = same front-end files + a new main file whose AGST_Catalog::guard() always
+  refuses (staging tools off on live).
+- WooCommerce > Aluglobus release: Export (staging) -> one JSON bundle; Import (live): Analyze (read-only field diff) then steps:
+  categories/attributes, families, products (match by ID+slug, create the 65 staging-created products, never change slugs,
+  per-product rollback record, auto-rollback if a permalink would change), project media (clean copies + hash check on live),
+  Elementor rebuild, group-5 redirects (+ item 142). Test plan: dry-run on staging must show zero diffs; then a staging
+  product round-trip; then switch staging to the release plugin as a live simulation.
+- Products created on staging: post_date >= 2026-09-20, IDs >= 63146 (65 published). Pre-clone products: IDs <= 60885.
+
+---
+
 # Status (2026-10-02, session 2) — read agst/HANDOFF.md first for full background and owner rules
 
 ## Done in session 2 (cloud Playwright, logged in with env creds)
