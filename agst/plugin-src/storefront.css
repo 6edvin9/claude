@@ -965,3 +965,15 @@ html body.single-product .agv #shop-now#shop-now .single_add_to_cart_button{widt
 .agv .agx-el .agx-text ul.agx-chips li{display:inline-flex!important;width:auto!important;margin:0!important}
 .agv .agx-el .agx-video-w .elementor-custom-embed-play{width:84px;height:84px;border-radius:50%;background:#ff792d;display:flex;align-items:center;justify-content:center;box-shadow:0 14px 30px #0008}
 .agv .agx-el .agx-video-w .elementor-custom-embed-play i,.agv .agx-el .agx-video-w .elementor-custom-embed-play svg{width:34px!important;height:34px!important;font-size:34px!important;color:#1a1209!important;fill:#1a1209!important;filter:none}
+/* v2.1: full width with minimal side padding (owner feedback) */
+.agv{--max:100%;--pad:clamp(16px,2vw,36px)}
+.agv-stage{max-height:min(76vh,860px)}
+.agv-thumbs{scrollbar-width:none}.agv-thumbs::-webkit-scrollbar{display:none}
+.agv .agx-el .agx-s>.agx-text,.agv .agx-el .agx-s-head .agx-text,.agv .agx-el .agx-s>.agx-note-w{max-width:900px!important;margin-left:0!important}
+.agv .agx-el .agx-s-head{max-width:1000px}
+.agv .agx-el .agx-s>.e-con,.agv .agx-el .agx-s>.elementor-element{margin-left:0!important}
+.agv .fpf-fields-config-wrapper{display:none!important}
+@media(min-width:1600px){.agv-hero{grid-template-columns:minmax(0,1.5fr) minmax(400px,1fr)}.agv-pgrid{grid-template-columns:repeat(5,minmax(0,1fr))}.agv .agx-rel-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+@media(min-width:721px){.agv-stage{aspect-ratio:auto;max-height:none;height:clamp(380px,64vh,780px);width:100%}}
+.agv .yith-wcwl-add-to-wishlist-button__label,.agv .yith-wcwl-add-to-wishlist-button{font-size:14px!important;font-weight:600}
+.agv .yith-wcwl-add-to-wishlist-button svg{width:18px!important;height:18px!important}
