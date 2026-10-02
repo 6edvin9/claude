@@ -2044,7 +2044,7 @@ final class AGST_Spec {
   if(preg_match('~(?:youtu\.be/|youtube(?:-nocookie)?\.com/(?:embed/|shorts/|watch\?v=))([a-zA-Z0-9_-]{11})~',$u,$m))$s=['video_type'=>'youtube','youtube_url'=>'https://www.youtube.com/watch?v='.$m[1]];
   elseif(preg_match('~vimeo\.com/(?:video/)?(\d+)~',$u,$m))$s=['video_type'=>'vimeo','vimeo_url'=>'https://vimeo.com/'.$m[1]];
   else $s=['video_type'=>'hosted','hosted_url'=>['url'=>$u,'id'=>'']];
-  $s['rel']='';$s['modestbranding']='yes';return self::w('video',$s,'agx-video-w');
+  $s['rel']='';$s['modestbranding']='yes';if(!empty($v['poster']['src'])){$s['show_image_overlay']='yes';$s['image_overlay']=['url'=>$v['poster']['src'],'id'=>(int)($v['poster']['id']??0)];$s['image_overlay_size']='full';$s['lightbox']='';}return self::w('video',$s,'agx-video-w');
  }
  static function table($head,$rows,$cls=''){
   $h='<table'.($cls?' class="'.$cls.'"':'').'>';if($head){$h.='<thead><tr>';foreach($head as $c)$h.='<th>'.self::in($c).'</th>';$h.='</tr></thead>';}$h.='<tbody>';
@@ -2456,13 +2456,44 @@ final class AGST_V2Build {
  static function enabled($pid){return get_option('agst_v2','')==='all'||(bool)get_post_meta($pid,'_agst_tpl_v2',true);}
  static function c($src){return class_exists('AGST_V2')?AGST_V2::cls($src):'';}
  static function textish($sec){foreach((array)($sec['parts']??[]) as $p){if(!in_array($p['type']??'',['text','checklist','chips','note','buttons','stats'],true))return false;}return true;}
+
+ /** Extra sections for thin pages, written only from this product's own spec lines and options (no invented facts). */
+ static function facts($pid){$sp=json_decode((string)get_post_meta($pid,'_agst_seo_specs',true),true);$o=[];foreach((array)$sp as $l){$l=trim(wp_strip_all_tags((string)$l));if(preg_match('~^([^:]{2,40}):\s*(.+)$~u',$l,$m))$o[strtolower(trim($m[1]))]=trim($m[2]);}return $o;}
+ static function pick($f,$re){foreach($f as $k=>$v)if(preg_match($re,$k))return $v;return '';}
+ static function words($spec){$t='';foreach($spec as $s){$t.=' '.($s['title']??'').' '.wp_strip_all_tags((string)($s['text']??''));foreach((array)($s['parts']??[]) as $p)$t.=' '.wp_strip_all_tags(wp_json_encode($p));}return str_word_count($t);}
+ static function extra($pid,$have=''){
+  $p=wc_get_product($pid);if(!$p)return [];$f=self::facts($pid);$name=$p->get_name();$out=[];
+  $mat=self::pick($f,'~^material~');$fin=self::pick($f,'~finish|coating~');$col=self::pick($f,'~^colou?rs?$~');$thk=self::pick($f,'~thick|wall~');
+  $opts=[];foreach($p->get_attributes() as $a){if(!$a->get_variation())continue;$vals=$a->is_taxonomy()?wc_get_product_terms($pid,$a->get_name(),['fields'=>'names']):$a->get_options();if($vals)$opts[wc_attribute_label($a->get_name())]=implode(', ',$vals);}
+  if($mat||$fin){$t='<p>'.esc_html($name).' is made from '.esc_html(strtolower($mat?:'aluminum')).($fin?', finished with '.esc_html($fin):'').($col?' in '.esc_html(strtolower($col)):'').'.</p>';
+   $blob=strtolower($mat.' '.$fin);
+   if(strpos($blob,'6063')!==false)$t.='<p>6063-T6 is an architectural aluminum alloy made for extruded profiles. It gives clean, consistent shapes and takes a powder coating evenly, which is why it is widely used for fences, gates and other exterior building products.</p>';
+   if(strpos($blob,'2604')!==false)$t.='<p>AAMA 2604 is the American Architectural Manufacturers Association specification for high-performance organic coatings, powder coatings included, on aluminum extrusions. It sets test requirements for outdoor color and gloss retention, chalking and corrosion resistance.</p>';
+   if(strpos($blob,'stainless')!==false)$t.='<p>Stainless steel is used for exterior fasteners because it resists rust outdoors.</p>';
+   $st=[];foreach([['Material',$mat],['Finish',$fin],['Color',$col?:($opts['Color']??'')],['Wall thickness',$thk]] as $x)if($x[1]!=='')$st[]=['label'=>$x[0],'value'=>mb_strimwidth($x[1],0,60,'…')];
+   if(preg_match('~6063|2604|stainless~',$blob))$out[]=['layout'=>'stack','eyebrow'=>'Material & finish','title'=>'What it is made of','text'=>$t,'parts'=>$st?[['type'=>'stats','items'=>array_slice($st,0,4)]]:[]];}
+  $use=self::pick($f,'~^(usage|use|used with|application)~');$fits=self::pick($f,'~^(fits|compatible)~');
+  if(($use||$fits)&&!preg_match('~where (it|this).{0,20}(used|goes|fits)|applications?\b|uses?\b~i',$have)){$items=[];if($use)foreach(preg_split('~\s*[,;]\s*~',$use) as $u)if(mb_strlen($u)>2)$items[]=ucfirst($u);
+   $out[]=['layout'=>'stack','eyebrow'=>'Where it is used','title'=>'Where this part goes','text'=>'<p>'.($fits?'Fits: '.esc_html($fits).'. ':'').($use?'Listed use: '.esc_html($use).'.':'').'</p>','parts'=>$items&&count($items)>1?[['type'=>'checklist','items'=>array_slice($items,0,8)]]:[]];}
+  $tips=[];$sold=self::pick($f,'~^sold|pack|quantity~');if($sold)$tips[]='Sold as: '.$sold.'.';$len=self::pick($f,'~^(length|size|dimensions)~');if($len)$tips[]='Size: '.$len.'.';
+  foreach($opts as $k=>$v)$tips[]=$k.' options: '.$v.'.';
+  foreach($f as $k=>$v)if(preg_match('~not included|sold separately|anchors|alternative|optional~i',$k.' '.$v)&&count($tips)<7)$tips[]=ucfirst($k).': '.$v.'.';
+  if($p->get_meta('_agst_coming_soon'))$tips[]='Marked coming soon: confirm availability before ordering.';
+  if(count($tips)>=2)$out[]=['layout'=>'stack','eyebrow'=>'Ordering','title'=>'Ordering tips','parts'=>[['type'=>'checklist','items'=>array_values(array_unique($tips))]]];
+  return $out;
+ }
  static function transform($spec,$pid){
   if(!is_array($spec)||!$spec)return $spec;
+  $have='';foreach($spec as $x)$have.=' '.($x['eyebrow']??'').' '.($x['title']??'');
+  // the v2 specifications section lists every spec line, so body sections that are only a spec table go
+  $spec=array_values(array_filter($spec,function($x){$pt=array_column((array)($x['parts']??[]),'type');return !($pt&&!array_diff($pt,['specs'])&&preg_match('~spec~i',($x['title']??'').' '.($x['eyebrow']??''))&&trim(wp_strip_all_tags((string)($x['text']??'')))==='');}));
+  if(self::words($spec)<650){$add=self::extra($pid,$have);if($add){$cta=null;if(($spec[count($spec)-1]['layout']??'')==='cta')$cta=array_pop($spec);$spec=array_merge($spec,$add);if($cta)$spec[]=$cta;}}
   // pool of real photos not already in the body
   $pool=[];$used=[];
   foreach($spec as $s){if(!empty($s['media']['src']))$used[AGST_V2::key($s['media']['src'])]=1;foreach((array)($s['parts']??[]) as $p)foreach((array)($p['images']??[]) as $im)if(!empty($im['src']))$used[AGST_V2::key($im['src'])]=1;}
-  if(class_exists('AGST_Media'))foreach(AGST_Media::images($pid) as $id){$u=wp_get_attachment_url($id);if(!$u||isset($used[AGST_V2::key($u)]))continue;$pool[]=['src'=>$u,'id'=>$id,'alt'=>(string)get_post_meta($id,'_wp_attachment_image_alt',true),'caption'=>wp_get_attachment_caption($id)];}
-  $take=function()use(&$pool){return array_shift($pool);};
+  // body takes photos from the end of the list (the hero carousel starts from the front); bands prefer landscape
+  if(class_exists('AGST_Media'))foreach(array_reverse(AGST_Media::images($pid)) as $id){$u=wp_get_attachment_url($id);if(!$u||isset($used[AGST_V2::key($u)]))continue;$m=wp_get_attachment_metadata($id);$pool[]=['src'=>$u,'id'=>$id,'alt'=>(string)get_post_meta($id,'_wp_attachment_image_alt',true),'caption'=>wp_get_attachment_caption($id),'land'=>($m['width']??0)>=($m['height']??1)];}
+  $take=function($land=false)use(&$pool){if($land){foreach($pool as $i=>$x){if(!empty($x['land'])){array_splice($pool,$i,1);return $x;}}return null;}return array_shift($pool);};
   $views=[];$out=[];
   foreach($spec as $s){
    $layout=$s['layout']??'stack';
@@ -2472,6 +2503,7 @@ final class AGST_V2Build {
     if($k==='A'||$k==='D'||$k==='X'){if($k==='D')$views[]=$s['media'];$r=$take();if($r){$s['media']=$r;}else{$s['layout']='stack';unset($s['media']);}}}
    $parts=[];foreach((array)($s['parts']??[]) as $p){$t=$p['type']??'';
     if($t==='gallery'){$keep=[];foreach((array)$p['images'] as $im){$k=self::c($im['src']??'');if($k==='A'||$k==='X')continue;if($k==='D'||($k==='C'&&count((array)$p['images'])>2)){$views[]=$im;continue;}$keep[]=$im;}if(!$keep)continue;$p['images']=$keep;if(count($keep)<($p['cols']??3))$p['cols']=max(1,min(count($keep),$p['cols']??3));}
+    if($t==='video'&&$pool){$ph=$pool[count($pool)-1];foreach($p['videos'] as &$vv){if(empty($vv['poster']))$vv['poster']=['src'=>$ph['src'],'id'=>$ph['id']];}unset($vv);}
     if(in_array($t,['cards','packages'],true)){foreach($p['items'] as &$it){if(!empty($it['image']['src'])&&in_array(self::c($it['image']['src']),['A','X','D'],true))unset($it['image']);}unset($it);}
     $parts[]=$p;}
    $s['parts']=$parts;
@@ -2483,7 +2515,7 @@ final class AGST_V2Build {
   foreach($out as $s){
    if(($s['layout']??'stack')==='stack'&&self::textish($s)&&($s['title']??'')!==''&&$pool&&count($pool)>2){$r=$take();$s['layout']='split';$s['media']=$r;$s['reverse']=($n++%2)===1;}
    $res[]=$s;$i++;
-   if(isset($band_at[$i])&&count($pool)>=3&&($s['layout']??'')!=='cta'){$r=$take();$res[]=['layout'=>'band','media'=>$r,'eyebrow'=>'Real project','title'=>(string)($r['caption']?:''),'parts'=>[]];}
+   if(isset($band_at[$i])&&count($pool)>=3&&($s['layout']??'')!=='cta'&&($r=$take(true))){$res[]=['layout'=>'band','media'=>$r,'eyebrow'=>'Real project','title'=>(string)($r['caption']?:''),'parts'=>[]];}
   }
   if($views){$seen=[];$imgs=[];foreach($views as $v){$k=AGST_V2::key($v['src']);if(isset($seen[$k]))continue;$seen[$k]=1;$imgs[]=$v;}
    $cta=null;if($res&&($res[count($res)-1]['layout']??'')==='cta')$cta=array_pop($res);

@@ -46,7 +46,8 @@ const fullOnly = args.includes('--nofull') ? false : true;
           }
           const broken = [...document.querySelectorAll('.agx img')].filter(i => vis(i) && i.complete && i.naturalWidth === 0).map(i => (i.currentSrc || i.src).split('/').pop()).slice(0, 5);
           const pkg = !!document.getElementById('agx-package'); const navPkg = !!document.querySelector('.agx-nav a[href="#agx-package"]');
-          return { broken, pkgOk: pkg === navPkg, title: document.title, h1: document.querySelectorAll('h1').length, sections: document.querySelectorAll('.agx-el .agx-s').length, nested, overflow, emptyHref, raw, low: low.slice(0, 12), lowCount: low.length, height: document.body.scrollHeight, scrollW: document.documentElement.scrollWidth };
+          const realImgs = [...document.querySelectorAll('.agx-real-item:not(.is-more) img, .agv-pi:not(.is-more) img')].filter(vis); const realBroken = realImgs.filter(i => i.complete && i.naturalWidth === 0).length;
+          return { real: realImgs.length, realBroken, vids: document.querySelectorAll('.agx-vid, .agv-vid').length, v2: !!document.querySelector('.agv'), rel: document.querySelectorAll('.agx-rel-card').length, broken, pkgOk: pkg === navPkg, title: document.title, h1: document.querySelectorAll('h1').length, sections: document.querySelectorAll('.agx-el .agx-s').length, nested, overflow, emptyHref, raw, low: low.slice(0, 12), lowCount: low.length, height: document.body.scrollHeight, scrollW: document.documentElement.scrollWidth };
         });
         results[key + '-' + mode] = m;
         await page.screenshot({ path: `shots/${key}-${mode}.png`, fullPage: true, timeout: 120000 });
