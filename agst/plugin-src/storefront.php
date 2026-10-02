@@ -2410,6 +2410,7 @@ final class AGST_V2 {
    </div>
    <?php if(count($hero)>1):?><button type="button" class="agv-arrow agv-prev" aria-label="Previous photo">‹</button><button type="button" class="agv-arrow agv-next" aria-label="Next photo">›</button><span class="agv-count"><b>1</b> / <?php echo count($hero);?></span>
    <div class="agv-thumbs" aria-label="Choose photo"><?php foreach($hero as $i=>$h):?><button type="button" aria-label="Show photo <?php echo $i+1;?>" aria-current="<?php echo $i===0?'true':'false';?>"><img src="<?php echo esc_url($h['thumb']);?>" alt="" loading="lazy" decoding="async"></button><?php endforeach;?></div><?php endif;?>
+   <?php if(count($hl)>=2):?><div class="agv-highlights agv-hl-desk" aria-label="Key facts"><?php foreach($hl as $h):?><div class="agv-hl"><?php echo self::icon($h[0]);?><span class="agv-hl-label"><?php echo esc_html($h[1]);?></span><span class="agv-hl-value"><?php echo esc_html($h[2]);?></span></div><?php endforeach;?></div><?php endif;?>
   </div>
   <div class="agv-buy" id="agv-buy">
    <p class="agv-kicker"><?php echo esc_html($r['family']);?></p>
@@ -2423,7 +2424,7 @@ final class AGST_V2 {
    <ul class="agv-trust"><li><?php echo self::icon('factory');?><span><b>Factory direct</b> from Aluglobus Aluminum Systems</span></li><li><?php echo self::icon('truck');?><span><b>Nationwide shipping</b> across the U.S.</span></li><li><?php echo self::icon('chat');?><span><b>Project support</b> for homeowners and trade pros</span></li></ul>
   </div>
  </section>
- <?php if(count($hl)>=3):?><section class="agv-highlights" aria-label="Key facts"><?php foreach($hl as $h):?><div class="agv-hl"><?php echo self::icon($h[0]);?><span class="agv-hl-label"><?php echo esc_html($h[1]);?></span><span class="agv-hl-value"><?php echo esc_html($h[2]);?></span></div><?php endforeach;?></section><?php endif;?>
+ <?php if(count($hl)>=2):?><section class="agv-highlights agv-hl-mob" aria-label="Key facts"><?php foreach($hl as $h):?><div class="agv-hl"><?php echo self::icon($h[0]);?><span class="agv-hl-label"><?php echo esc_html($h[1]);?></span><span class="agv-hl-value"><?php echo esc_html($h[2]);?></span></div><?php endforeach;?></section><?php endif;?>
  <nav class="agv-nav" aria-label="Page sections"><div class="agv-nav-in"><?php foreach($nav as $id=>$l):?><a href="#<?php echo esc_attr($id);?>"><?php echo esc_html($l);?></a><?php endforeach;?><a class="agv-nav-cta" href="#agv-buy"><?php echo $price?wp_strip_all_tags($price):'Get a quote';?> · Buy</a></div></nav>
  <?php if($has_el):?><div class="agv-body agx-el" id="agv-overview"><?php echo $el;?></div><?php endif;?>
  <?php if($real_ids||$extra_real):$n=count($real_ids)+count($extra_real);?>

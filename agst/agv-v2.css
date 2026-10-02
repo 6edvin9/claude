@@ -359,3 +359,95 @@ html body.single-product .agv #shop-now#shop-now .single_add_to_cart_button{widt
 @media(min-width:721px){.agv-stage{aspect-ratio:auto;max-height:none;height:clamp(380px,64vh,780px);width:100%}}
 .agv .yith-wcwl-add-to-wishlist-button__label,.agv .yith-wcwl-add-to-wishlist-button{font-size:14px!important;font-weight:600}
 .agv .yith-wcwl-add-to-wishlist-button svg{width:18px!important;height:18px!important}
+/* v2.2 layout: stack sections without wide components become head-left / content-right on desktop */
+@media(min-width:1025px){
+ .agv .agx-el .agx-s:not(.agx-band):not(.agx-tone-accent):not(:has(.agx-split,.agx-cards,.agx-gallery,.agx-packages,.agx-videos,.agx-steps,.agx-stats)):has(>.agx-s-head){display:grid!important;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);column-gap:clamp(32px,5vw,96px)!important;row-gap:22px!important;align-items:start}
+ .agv .agx-el .agx-s:not(.agx-band):not(.agx-tone-accent):not(:has(.agx-split,.agx-cards,.agx-gallery,.agx-packages,.agx-videos,.agx-steps,.agx-stats)):has(>.agx-s-head)>.agx-s-head{grid-column:1;grid-row:1/span 30;position:sticky;top:90px;max-width:none}
+ .agv .agx-el .agx-s:not(.agx-band):not(.agx-tone-accent):not(:has(.agx-split,.agx-cards,.agx-gallery,.agx-packages,.agx-videos,.agx-steps,.agx-stats)):has(>.agx-s-head)>*:not(.agx-s-head){grid-column:2;max-width:none!important;width:100%}
+ /* stacks that do hold wide components keep full width, with the head capped for line length */
+ .agv .agx-el .agx-s>.agx-s-head{max-width:1000px}
+}
+/* text inside the 2-col right column needs no extra cap */
+.agv .agx-el .agx-s>.agx-text h3:first-child,.agv .agx-el .agx-s>.agx-text h4:first-child{margin-top:0}
+/* dark CTA sections: two-column banner, readable chips */
+.agv .agx-el .agx-tone-accent ul.agx-chips li{background:#ffffff14!important;color:#e9ece9!important;border:1px solid #ffffff26}
+.agv .agx-el .agx-tone-accent .agx-h2 .elementor-heading-title{font-size:clamp(28px,2.8vw,44px)!important;max-width:24ch}
+@media(min-width:1025px){
+ .agv .agx-el .agx-cta-inner{display:grid!important;grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr);column-gap:clamp(32px,5vw,96px)!important;row-gap:14px!important;align-items:center}
+ .agv .agx-el .agx-cta-inner>*{grid-column:1}
+ .agv .agx-el .agx-cta-inner>.agx-btns,.agv .agx-el .agx-cta-inner>.agx-text:has(ul.agx-chips),.agv .agx-el .agx-cta-inner>.agx-agx-chips{grid-column:2}
+ .agv .agx-el .agx-cta-inner>.agx-btns{grid-row:1/span 3;align-self:center;flex-direction:column!important;align-items:stretch}
+ .agv .agx-el .agx-cta-inner>.agx-btns .elementor-button{width:100%;justify-content:center}
+}
+/* v2.2b */
+.agv .agx-el ul.agx-chips{flex-direction:row!important;flex-wrap:wrap!important;align-items:flex-start!important}
+.agv .agx-el ul.agx-chips li{flex:0 0 auto!important;width:auto!important}
+body.single-product .chaty .on-hover-text,body.single-product .chaty .chaty-tooltip:after,body.single-product .chaty .chaty-tooltip:before{display:none!important}
+.agv-highlights.agv-hl-desk{max-width:none;margin:22px 0 0;padding:0;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.agv-highlights.agv-hl-mob{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+@media(min-width:901px){.agv-hl-mob{display:none!important}}
+@media(max-width:900px){.agv-hl-desk{display:none!important}.agv-highlights.agv-hl-mob{padding-top:24px}}
+@media(min-width:1025px){
+ .agv .agx-el .agx-s:not(.agx-band):not(.agx-tone-accent):not(:has(.agx-split,.agx-cards,.agx-gallery,.agx-packages,.agx-videos,.agx-steps,.agx-stats)):has(>.agx-s-head){row-gap:0!important}
+ .agv .agx-el .agx-s:not(.agx-band):not(.agx-tone-accent):not(:has(.agx-split,.agx-cards,.agx-gallery,.agx-packages,.agx-videos,.agx-steps,.agx-stats)):has(>.agx-s-head)>*:not(.agx-s-head){margin-bottom:22px!important}
+ .agv .agx-el .agx-s:not(.agx-band):not(.agx-tone-accent):not(:has(.agx-split,.agx-cards,.agx-gallery,.agx-packages,.agx-videos,.agx-steps,.agx-stats)):has(>.agx-s-head)>*:last-child{margin-bottom:0!important}
+}
+/* v2 fixes: theme mobile cart sheet, buy now, dark body sections */
+html body.single-product .agv form.cart{position:static!important;transform:none!important;inset:auto!important;height:auto!important;max-height:none!important;width:auto!important;z-index:auto!important;background:none!important;box-shadow:none!important;padding:0!important;visibility:visible!important;opacity:1!important;overflow:visible!important}
+.agv #mobile-close-infor,.agv .mobile-infor-wrapper,.agv #mobile-close-infor-wrapper,#mobile-close-infor-wrapper:has(#tbay-click-addtocart),.agv #tbay-click-addtocart,.agv #tbay-click-buy-now,.agv .mobile-btn-cart-click{display:none!important}
+html body.single-product .agv #shop-now#shop-now{position:static!important;display:grid!important;grid-template-columns:132px 1fr;gap:10px!important;margin:0!important;padding:0!important;background:none!important;box-shadow:none!important;width:auto!important}
+html body.single-product .agv #shop-now#shop-now>*{position:static!important;inset:auto!important;margin:0!important;max-width:none!important;width:auto!important}
+html body.single-product .agv #shop-now#shop-now .tbay-buy-now.button{grid-column:1/-1;background:var(--ink)!important;background-color:var(--ink)!important;color:#fff!important;border:0!important;border-radius:999px!important;min-height:52px;font-weight:700!important;text-transform:none!important;opacity:1!important;font-size:15px!important}
+html body.single-product .agv #shop-now#shop-now .tbay-buy-now.button.disabled{background:#3b413e!important;background-color:#3b413e!important}
+html body.single-product .agv #shop-now#shop-now .single_add_to_cart_button{width:100%!important;font-size:15px!important}
+.agv .button-wishlist{position:static!important;inset:auto!important;width:auto!important;height:auto!important;background:none!important;box-shadow:none!important;padding:0!important}
+.agv .agx-el .agx-tone-accent .agx-h2 .elementor-heading-title,.agv .agx-el .agx-tone-accent .agx-card-title .elementor-heading-title{color:#fff!important}
+.agv .agx-el .agx-tone-accent .agx-text,.agv .agx-el .agx-tone-accent .agx-text p,.agv .agx-el .agx-tone-accent .agx-text li,.agv .agx-el .agx-tone-accent .agx-intro p{color:#d6dad7!important}
+.agv .agx-el .agx-tone-accent .agx-kicker .elementor-heading-title{color:#ff9b5f!important}
+.agv-dl>div.agv-dl-note{grid-template-columns:1fr}
+@media(max-width:720px){html body.single-product .agv #shop-now#shop-now{grid-template-columns:116px 1fr}}
+/* v2.1: full width with minimal side padding (owner feedback) */
+.agv{--max:100%;--pad:clamp(16px,2vw,36px)}
+.agv-stage{max-height:min(76vh,860px)}
+.agv-thumbs{scrollbar-width:none}.agv-thumbs::-webkit-scrollbar{display:none}
+.agv .agx-el .agx-s>.agx-text,.agv .agx-el .agx-s-head .agx-text,.agv .agx-el .agx-s>.agx-note-w{max-width:900px!important;margin-left:0!important}
+.agv .agx-el .agx-s-head{max-width:1000px}
+.agv .agx-el .agx-s>.e-con,.agv .agx-el .agx-s>.elementor-element{margin-left:0!important}
+.agv .fpf-fields-config-wrapper{display:none!important}
+@media(min-width:1600px){.agv-hero{grid-template-columns:minmax(0,1.5fr) minmax(400px,1fr)}.agv-pgrid{grid-template-columns:repeat(5,minmax(0,1fr))}.agv .agx-rel-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+@media(min-width:721px){.agv-stage{aspect-ratio:auto;max-height:none;height:clamp(380px,64vh,780px);width:100%}}
+.agv .yith-wcwl-add-to-wishlist-button__label,.agv .yith-wcwl-add-to-wishlist-button{font-size:14px!important;font-weight:600}
+.agv .yith-wcwl-add-to-wishlist-button svg{width:18px!important;height:18px!important}
+/* v2.2 layout: stack sections without wide components become head-left / content-right on desktop */
+@media(min-width:1025px){
+ .agv .agx-el .agx-s:not(.agx-band):not(.agx-tone-accent):not(:has(.agx-split,.agx-cards,.agx-gallery,.agx-packages,.agx-videos,.agx-steps,.agx-stats)):has(>.agx-s-head){display:grid!important;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);column-gap:clamp(32px,5vw,96px)!important;row-gap:22px!important;align-items:start}
+ .agv .agx-el .agx-s:not(.agx-band):not(.agx-tone-accent):not(:has(.agx-split,.agx-cards,.agx-gallery,.agx-packages,.agx-videos,.agx-steps,.agx-stats)):has(>.agx-s-head)>.agx-s-head{grid-column:1;grid-row:1/span 30;position:sticky;top:90px;max-width:none}
+ .agv .agx-el .agx-s:not(.agx-band):not(.agx-tone-accent):not(:has(.agx-split,.agx-cards,.agx-gallery,.agx-packages,.agx-videos,.agx-steps,.agx-stats)):has(>.agx-s-head)>*:not(.agx-s-head){grid-column:2;max-width:none!important;width:100%}
+ /* stacks that do hold wide components keep full width, with the head capped for line length */
+ .agv .agx-el .agx-s>.agx-s-head{max-width:1000px}
+}
+/* text inside the 2-col right column needs no extra cap */
+.agv .agx-el .agx-s>.agx-text h3:first-child,.agv .agx-el .agx-s>.agx-text h4:first-child{margin-top:0}
+/* dark CTA sections: two-column banner, readable chips */
+.agv .agx-el .agx-tone-accent ul.agx-chips li{background:#ffffff14!important;color:#e9ece9!important;border:1px solid #ffffff26}
+.agv .agx-el .agx-tone-accent .agx-h2 .elementor-heading-title{font-size:clamp(28px,2.8vw,44px)!important;max-width:24ch}
+@media(min-width:1025px){
+ .agv .agx-el .agx-cta-inner{display:grid!important;grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr);column-gap:clamp(32px,5vw,96px)!important;row-gap:14px!important;align-items:center}
+ .agv .agx-el .agx-cta-inner>*{grid-column:1}
+ .agv .agx-el .agx-cta-inner>.agx-btns,.agv .agx-el .agx-cta-inner>.agx-text:has(ul.agx-chips),.agv .agx-el .agx-cta-inner>.agx-agx-chips{grid-column:2}
+ .agv .agx-el .agx-cta-inner>.agx-btns{grid-row:1/span 3;align-self:center;flex-direction:column!important;align-items:stretch}
+ .agv .agx-el .agx-cta-inner>.agx-btns .elementor-button{width:100%;justify-content:center}
+}
+/* v2.2b */
+.agv .agx-el ul.agx-chips{flex-direction:row!important;flex-wrap:wrap!important;align-items:flex-start!important}
+.agv .agx-el ul.agx-chips li{flex:0 0 auto!important;width:auto!important}
+body.single-product .chaty .on-hover-text,body.single-product .chaty .chaty-tooltip:after,body.single-product .chaty .chaty-tooltip:before{display:none!important}
+.agv-highlights.agv-hl-desk{max-width:none;margin:22px 0 0;padding:0;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.agv-highlights.agv-hl-mob{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+@media(min-width:901px){.agv-hl-mob{display:none!important}}
+@media(max-width:900px){.agv-hl-desk{display:none!important}.agv-highlights.agv-hl-mob{padding-top:24px}}
+@media(min-width:1025px){
+ .agv .agx-el .agx-s:not(.agx-band):not(.agx-tone-accent):not(:has(.agx-split,.agx-cards,.agx-gallery,.agx-packages,.agx-videos,.agx-steps,.agx-stats)):has(>.agx-s-head){row-gap:0!important}
+ .agv .agx-el .agx-s:not(.agx-band):not(.agx-tone-accent):not(:has(.agx-split,.agx-cards,.agx-gallery,.agx-packages,.agx-videos,.agx-steps,.agx-stats)):has(>.agx-s-head)>*:not(.agx-s-head){margin-bottom:22px!important}
+ .agv .agx-el .agx-s:not(.agx-band):not(.agx-tone-accent):not(:has(.agx-split,.agx-cards,.agx-gallery,.agx-packages,.agx-videos,.agx-steps,.agx-stats)):has(>.agx-s-head)>*:last-child{margin-bottom:0!important}
+}
