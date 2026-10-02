@@ -1,0 +1,10 @@
+
+/* ===== agx fixes 1.3 (2026-10-02): buy box polish ===== */
+/* Wishlist: one compact labelled row instead of a lone heart with a 75px gap */
+.agx .agx-cart .group-button{margin-top:8px!important}
+body .agx .agx-cart .button-wishlist{margin:0!important}
+.agx .agx-cart .yith-add-to-wishlist-button-block{margin:0!important}
+.agx .agx-cart .yith-wcwl-add-to-wishlist-button__label{display:inline!important}
+/* Buy-box fact tiles: equal height, short copy (long descriptions are clamped; full text lives in the body) */
+.agx .agx-features>div{min-width:0}
+.agx .agx-features>div p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}

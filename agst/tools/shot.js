@@ -44,7 +44,9 @@ const fullOnly = args.includes('--nofull') ? false : true;
             const ratio = (Math.max(f.L, b) + .05) / (Math.min(f.L, b) + .05);
             if (ratio < 3) low.push(e.tagName + ' ' + ratio.toFixed(2) + ' "' + e.textContent.trim().slice(0, 40) + '"');
           }
-          return { title: document.title, h1: document.querySelectorAll('h1').length, sections: document.querySelectorAll('.agx-el .agx-s').length, nested, overflow, emptyHref, raw, low: low.slice(0, 12), lowCount: low.length, height: document.body.scrollHeight, scrollW: document.documentElement.scrollWidth };
+          const broken = [...document.querySelectorAll('.agx img')].filter(i => vis(i) && i.complete && i.naturalWidth === 0).map(i => (i.currentSrc || i.src).split('/').pop()).slice(0, 5);
+          const pkg = !!document.getElementById('agx-package'); const navPkg = !!document.querySelector('.agx-nav a[href="#agx-package"]');
+          return { broken, pkgOk: pkg === navPkg, title: document.title, h1: document.querySelectorAll('h1').length, sections: document.querySelectorAll('.agx-el .agx-s').length, nested, overflow, emptyHref, raw, low: low.slice(0, 12), lowCount: low.length, height: document.body.scrollHeight, scrollW: document.documentElement.scrollWidth };
         });
         results[key + '-' + mode] = m;
         await page.screenshot({ path: `shots/${key}-${mode}.png`, fullPage: true, timeout: 120000 });

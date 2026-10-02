@@ -5,4 +5,4 @@ for l in sys.stdin:
   k,m,j=p
   try: d=json.loads(j)
   except: print(l.strip()[:250]); continue
-  print(k,m,'sec',d['sections'],'nest',d['nested'],'empty',[x for x in d['emptyHref'] if any(w in x for w in ('Request','Quote','Get','View','Price','Contact','Call','Shop','Order','See'))][:3],'raw',d['raw'],'low',d['lowCount'],d['low'][:3],'sw',d['scrollW'])
+  print(k,m,'sec',d['sections'],'nest',d['nested'],'empty',[x for x in d['emptyHref'] if any(w in x for w in ('Request','Quote','Get','View','Price','Contact','Call','Shop','Order','See'))][:3],'raw',d['raw'],'low',d['lowCount'],d['low'][:3],'sw',d['scrollW'],'broken',d.get('broken'),'pkgOk',d.get('pkgOk'))
