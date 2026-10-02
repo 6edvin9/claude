@@ -2066,7 +2066,7 @@ final class AGST_Spec {
    case 'shortcode':$code=trim(wp_strip_all_tags((string)($p['code']??'')));return $code===''?[]:[self::w('text-editor',['editor'=>'<div class="agx-ar">'.$code.'</div>'],'agx-text agx-shortcode')];
    case 'stats':$it=[];foreach((array)($p['items']??[]) as $x){$it[]=self::c([self::head('p',$x['label']??'','agx-stat-label'),self::head('p',$x['value']??'','agx-stat-value')],'agx-stat');}return $it?[self::c($it,'agx-grid agx-stats agx-cols-'.self::cols(count($it)),'row')]:[];
    case 'gallery':$im=[];foreach((array)($p['images']??[]) as $x){$e=self::image($x,'agx-img agx-gallery-img');if($e)$im[]=$e;}if(!$im)return [];$n=self::cols($p['cols']??count($im),4);if(count($im)===1)$n=1;return [self::c($im,'agx-grid agx-gallery agx-cols-'.$n,'row')];
-   case 'video':$v=[];foreach((array)($p['videos']??[]) as $x){$e=self::video($x);if($e)$v[]=$e;}return $v?[self::c($v,'agx-grid agx-videos agx-cols-'.min(2,count($v)),'row')]:[];
+   case 'video':$v=[];foreach((array)($p['videos']??[]) as $x){$e=self::video($x);if($e)$v[]=$e;}$n=count($v);return $v?[self::c($v,'agx-grid agx-videos agx-cols-'.($n<=3?$n:($n===4?2:3)),'row')]:[];
    case 'specs':return [self::table([],$p['rows']??[],'agx-spec')];
    case 'table':return [self::table($p['head']??[],$p['rows']??[])];
    case 'faq':$tabs=[];foreach((array)($p['items']??[]) as $qa){$q=is_array($qa)?($qa['q']??$qa[0]??''):'';$a=is_array($qa)?($qa['a']??$qa[1]??''):'';if(self::txt($q)==='')continue;$a=self::rich(preg_match('~^\s*<~',$a)?$a:'<p>'.esc_html($a).'</p>');$tabs[]=['_id'=>self::uid(),'tab_title'=>self::txt($q),'tab_content'=>$a];}return $tabs?[self::w('toggle',['tabs'=>$tabs],'agx-acc')]:[];
@@ -2512,6 +2512,7 @@ final class AGST_V2Build {
     if($t==='gallery'){$keep=[];foreach((array)$p['images'] as $im){$k=self::c($im['src']??'');if($k==='A'||$k==='X')continue;if($k==='D'||($k==='C'&&count((array)$p['images'])>2)){$views[]=$im;continue;}$keep[]=$im;}if(!$keep)continue;$p['images']=$keep;if(count($keep)<($p['cols']??3))$p['cols']=max(1,min(count($keep),$p['cols']??3));}
     if($t==='video'&&$pool){$ph=$pool[count($pool)-1];foreach($p['videos'] as &$vv){if(empty($vv['poster']))$vv['poster']=['src'=>$ph['src'],'id'=>$ph['id']];}unset($vv);}
     if(in_array($t,['cards','packages'],true)){foreach($p['items'] as &$it){if(!empty($it['image']['src'])&&in_array(self::c($it['image']['src']),['A','X','D'],true))unset($it['image']);}unset($it);}
+    if($t==='video'){$vi=null;foreach($parts as $j=>$q)if(($q['type']??'')==='video'){$vi=$j;break;}if($vi!==null){$parts[$vi]['videos']=array_merge((array)$parts[$vi]['videos'],(array)$p['videos']);continue;}}
     $parts[]=$p;}
    $had_gal=in_array('gallery',array_column((array)($s['parts']??[]),'type'),true);$s['parts']=$parts;
    if($had_gal&&!$parts&&($s['layout']??'stack')!=='split')continue;
@@ -2525,6 +2526,8 @@ final class AGST_V2Build {
    $res[]=$s;$i++;
    if(isset($band_at[$i])&&count($pool)>=3&&($s['layout']??'')!=='cta'&&($r=$take(true))){$res[]=['layout'=>'band','media'=>$r,'eyebrow'=>'Real project','title'=>(string)($r['caption']?:''),'parts'=>[]];}
   }
+  // text-only stacks: title on the left, intro + copy together on the right (no lopsided half-empty columns)
+  foreach($res as &$s){if(($s['layout']??'stack')==='stack'&&self::textish($s)&&trim(wp_strip_all_tags((string)($s['text']??'')))!==''&&($s['title']??'')!==''){array_unshift($s['parts'],['type'=>'text','html'=>AGST_Spec::para($s['text'])]);$s['text']='';}}unset($s);
   if($views){$seen=[];$imgs=[];foreach($views as $v){$k=AGST_V2::key($v['src']);if(isset($seen[$k]))continue;$seen[$k]=1;$imgs[]=$v;}
    $cta=null;if($res&&($res[count($res)-1]['layout']??'')==='cta')$cta=array_pop($res);
    $res[]=['layout'=>'stack','eyebrow'=>'Reference','title'=>'Product views & drawings','parts'=>[['type'=>'drawings','images'=>$imgs]]];if($cta)$res[]=$cta;}
