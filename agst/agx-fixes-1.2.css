@@ -1,0 +1,25 @@
+
+/* ===== agx fixes 1.2 (2026-10-02): mobile buy box, trust bar, section nav, spec tables, chat bubble ===== */
+/* Lasa's mobile "attribute sheet" trigger duplicates the inline swatches: hide it and its overlay */
+.agx .mobile-attribute-list,.agx #mobile-close-infor-wrapper{display:none!important}
+@media(max-width:600px){
+ /* Trust bar: one tidy row per promise instead of three cramped columns */
+ .agx .agx-trust{grid-template-columns:1fr!important;gap:0!important;padding:4px 16px!important}
+ .agx .agx-trust>div{flex-direction:row!important;align-items:baseline;justify-content:space-between;gap:16px;border-right:0!important;border-bottom:1px solid #2a2f2e!important;padding:12px 0!important}
+ .agx .agx-trust>div:last-child{border-bottom:0!important}
+ .agx .agx-trust b{font-size:13px!important;white-space:nowrap}
+ .agx .agx-trust span{font-size:12px!important;text-align:right}
+ /* Section nav scrolls sideways: fade the edge so the cut-off tab reads as "more" */
+ .agx .agx-nav{-webkit-mask-image:linear-gradient(90deg,#000 82%,transparent);mask-image:linear-gradient(90deg,#000 82%,transparent);padding-right:40px!important}
+}
+@media(max-width:720px){
+ /* Stacked spec rows: label and value share one row background */
+ .agx .agx-el .agx-table table.agx-spec tr{display:block}
+ .agx .agx-el .agx-table table.agx-spec :is(th,td){background:transparent!important}
+ .agx .agx-el .agx-table table.agx-spec th{padding-bottom:2px!important}
+ .agx .agx-el .agx-table table.agx-spec td{padding-bottom:12px!important}
+}
+@media(max-width:768px){
+ /* Chat bubble: keep the button, drop the always-on label that covers page content */
+ .chaty .on-hover-text,.chaty .chaty-tooltip:after,.chaty .chaty-tooltip:before{display:none!important}
+}
