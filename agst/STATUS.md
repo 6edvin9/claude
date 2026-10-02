@@ -1,4 +1,4 @@
-# Status — deep design QA (v2.3, ASSET_VERSION 2.3.6)
+# Status — deep design QA (v2.4, ASSET_VERSION 2.4.3)
 Owner asked for a designer + user pass before deciding on go-live (empty half-columns, spacing, colours). Fixed on staging:
 - Two-column sections on desktop: title/intro left (sticky), table/list/FAQ right, no blank half (spec tables, FAQ, text).
 - Text-only sections: title left, all copy right (the intro no longer sits alone on the left with one line on the right).
@@ -14,6 +14,12 @@ Owner asked for a designer + user pass before deciding on go-live (empty half-co
 - Own-site image/video URLs in the built body forced to https (were http:// -> mixed-content warnings).
   Still http in theme settings (logo, Yoast schema logo): site settings, not product content.
 - All 144 products rebuilt; cache purged.
+- v2.4: YouTube videos without a photo cover use the video's own thumbnail (no blank tiles); quantity selector fits on
+  mobile (the + sat outside and touched Add to cart); spec tables in full-width sections span the row as two columns of
+  label/value pairs; 3+ column tables fit the phone width; text-only card next to photo cards keeps its own height.
+- Final sweep: 144 products x desktop 1366 + mobile 390 = 288 pages, 0 issues (no nested sections, empty buttons, raw
+  shortcodes, low-contrast text, horizontal overflow or broken images). Visual review: sliding gate, pad gate, fence kit,
+  gate frame kit, slat/beam/louver roofs, boxed louver kit, cladding, hardware part (desktop + mobile).
 Known/left for the owner: hero images of some new kits are infographic renders (WooCommerce product images, not changed);
 some long pages show both a body spec table and the v2 "Technical details" table.
 
