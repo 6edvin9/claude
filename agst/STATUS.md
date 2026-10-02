@@ -1,3 +1,23 @@
+# Status (2026-10-02, session 2, part 3) — v2 product page design
+
+- **v2 template live on staging for all 144 products** (option agst_v2='all'; per product meta _agst_tpl_v2; ?v1=1 shows the old
+  layout, ?v2=1 previews v2 on staging). Light, photo-led design: hero carousel (real project photos first for kits, product
+  images first for parts), buy panel that stays in view, highlight cards (when 3+ labelled specs), section nav that stays in
+  view, mobile buy bar, dark "Real projects" grid, video feature, specifications + "Product views & drawings" panel,
+  related products + checklist, FAQ with contact card, photo closing section. CSS scope .agv (agst/agv-v2.css).
+- **Body v2 (AGST_V2Build, applied before the Elementor build)**: AI scenes removed (replaced by verified real photos where the
+  product has them), drawings/renders collected into one expandable panel, full-width real-photo bands (landscape preferred),
+  text-only sections turned into text + real-photo splits, real-photo covers on body videos, spec-only body sections dropped
+  (the v2 specs section lists everything), galleries left empty are dropped.
+- **Image classes**: all 492 images on product pages classified (R real 190, C render/cut-out 181, A AI 102, D drawing 13, X 6):
+  agst/media/page-image-classes.json (option agst_img_classes).
+- **More content on thin pages** (< 650 words): sections built only from the product's own spec lines/options: material & finish
+  (with factual explanations of 6063-T6 / AAMA 2604 / stainless), where it is used (if not already covered), ordering tips.
+- Open question for the owner: parts/hardware pages have no real photos of that exact part; they could show photos of
+  fences/gates built with the same system, labelled as such.
+
+---
+
 # Status (2026-10-02, session 2, part 2) — media, content, live import
 
 ## Done (staging only)

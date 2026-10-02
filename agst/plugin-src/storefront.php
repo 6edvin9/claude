@@ -2367,8 +2367,9 @@ final class AGST_V2 {
  static function cls($u){$c=self::classes();return $c[self::key($u)]??'';}
  static function is_kit($p){$n=strtolower($p->get_name());return (bool)preg_match('~kit|gate|fence|pergola|patio|roof system|cladding|clad1|louver~',$n)&&!preg_match('~hinge|bracket|screw|spacer|cap\b|plug|stopper|latch|bolt|anchor|wheel|track|roller|catcher|post kit|slat box|frame kit only~',$n);}
  /** Hero media: real project photos first for kits, product images first for parts; AI scenes only as a last resort. */
- static function hero($p,$model){
+ static function hero($p,$model,$body=''){
   $real=[];if(class_exists('AGST_Media'))foreach(AGST_Media::images($p->get_id()) as $id)$real[]=['url'=>wp_get_attachment_url($id),'thumb'=>wp_get_attachment_image_url($id,'medium_large')?:wp_get_attachment_url($id),'alt'=>(string)get_post_meta($id,'_wp_attachment_image_alt',true),'tag'=>'Real project'];
+  if(count($real)<4&&$body&&preg_match_all('~<img[^>]+src="([^"]+)"~i',$body,$mm)){foreach($mm[1] as $u){if(self::cls($u)!=='R')continue;$full=preg_replace('~-\d+x\d+(?=\.\w+$)~','',$u);$real[]=['url'=>$full,'thumb'=>$u,'alt'=>'','tag'=>'Real project'];if(count($real)>=8)break;}}
   $prod=[];$ai=[];foreach($model['hero'] as $im){$c=self::cls($im['url']);$it=['url'=>$im['url'],'thumb'=>$im['url'],'alt'=>$im['alt']??'','tag'=>$c==='R'?'Real project':''];if($c==='X')continue;if($c==='A')$ai[]=$it;elseif($c==='R')array_unshift($real,$it);else $prod[]=$it;}
   $list=self::is_kit($p)?array_merge(array_slice($real,0,10),$prod):array_merge($prod,array_slice($real,0,8));
   if(count($list)<2)$list=array_merge($list,array_slice($ai,0,3));
@@ -2381,8 +2382,8 @@ final class AGST_V2 {
   return '<svg class="agv-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'.($p[$n]??$p['check']).'</svg>';}
  static function yt($u){return preg_match('~(?:youtu\.be/|youtube(?:-nocookie)?\.com/(?:embed/|shorts/|watch\?v=))([a-zA-Z0-9_-]{11})~',(string)$u,$m)?$m[1]:'';}
  static function render($model){
-  extract($model);$pid=$p->get_id();$title=$r['title'];$price=$p->get_price_html();$hero=self::hero($p,$model);$pairs=self::spec_pairs($r['specs']);$hl=self::highlights($pairs);
-  $el=class_exists('AGST_ElBuild')?AGST_ElBuild::show($pid):null;$has_el=$el!==null&&(class_exists('AGST_ElBuild')&&AGST_ElBuild::preview($pid)||trim(wp_strip_all_tags((string)$el,true))!==''||stripos((string)$el,'<img')!==false);
+  extract($model);$pid=$p->get_id();$title=$r['title'];$price=$p->get_price_html();$el0=class_exists('AGST_ElBuild')?AGST_ElBuild::show($pid):null;$hero=self::hero($p,$model,(string)$el0);$pairs=self::spec_pairs($r['specs']);$hl=self::highlights($pairs);
+  $el=$el0;$has_el=$el!==null&&(class_exists('AGST_ElBuild')&&AGST_ElBuild::preview($pid)||trim(wp_strip_all_tags((string)$el,true))!==''||stripos((string)$el,'<img')!==false);
   $media=class_exists('AGST_Media')?AGST_Media::get($pid):['title'=>'','intro'=>'','videos'=>[]];$real_ids=class_exists('AGST_Media')?AGST_Media::images($pid):[];$real_ids=array_values(array_filter($real_ids,function($id)use($el){$u=wp_get_attachment_url($id);return !$u||strpos((string)$el,pathinfo($u,PATHINFO_FILENAME))===false;}));
   // videos: product's own first, then project videos; skip any already inside the body
   $vids=[];foreach($videos as $v){$y=self::yt($v['url']);$k=$y?:$v['url'];if($y&&strpos((string)$el,$y)!==false)continue;$vids[$k]=['yt'=>$y,'url'=>$v['url'],'title'=>'Product video'];}
@@ -2506,7 +2507,8 @@ final class AGST_V2Build {
     if($t==='video'&&$pool){$ph=$pool[count($pool)-1];foreach($p['videos'] as &$vv){if(empty($vv['poster']))$vv['poster']=['src'=>$ph['src'],'id'=>$ph['id']];}unset($vv);}
     if(in_array($t,['cards','packages'],true)){foreach($p['items'] as &$it){if(!empty($it['image']['src'])&&in_array(self::c($it['image']['src']),['A','X','D'],true))unset($it['image']);}unset($it);}
     $parts[]=$p;}
-   $s['parts']=$parts;
+   $had_gal=in_array('gallery',array_column((array)($s['parts']??[]),'type'),true);$s['parts']=$parts;
+   if($had_gal&&!$parts&&($s['layout']??'stack')!=='split')continue;
    if(empty($s['title'])&&empty($s['text'])&&!$parts&&($s['layout']??'stack')!=='split')continue;
    $out[]=$s;
   }
