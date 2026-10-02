@@ -1,3 +1,22 @@
+# Status — deep design QA (v2.3, ASSET_VERSION 2.3.6)
+Owner asked for a designer + user pass before deciding on go-live (empty half-columns, spacing, colours). Fixed on staging:
+- Two-column sections on desktop: title/intro left (sticky), table/list/FAQ right, no blank half (spec tables, FAQ, text).
+- Text-only sections: title left, all copy right (the intro no longer sits alone on the left with one line on the right).
+- Videos: all videos of a section in one grid (2 or 3 across, 2x2 for 4) instead of 2 + 1 full-width; a section with one
+  video shows copy left, video right. Body video posters were the cause of the big empty areas.
+- Galleries, cards and steps fill the last row (no empty grid cells); checklists of 4+ items in two columns on desktop.
+- "Product views & drawings": a slim bar (small title, toggle) instead of a tall half-empty section.
+- CTA "Do you want to buy?": buttons on the right, readable chips (were light-on-light). Photo bands shorter (max 560px).
+- "Complete the system" heading fixed (eyebrow + title left, intro right). Duplicate "Coming soon" notice removed.
+- Highlight tiles under the gallery fill their row (4 across, odd last tile spans on mobile).
+- Copy: 16 editor notes left in the pergola copy ("Use this video section to show customers how...") now read as customer
+  copy ("Watch how...", "See the..."), done in the builder (AGST_V2Build::copyfix), source text unchanged.
+- Own-site image/video URLs in the built body forced to https (were http:// -> mixed-content warnings).
+  Still http in theme settings (logo, Yoast schema logo): site settings, not product content.
+- All 144 products rebuilt; cache purged.
+Known/left for the owner: hero images of some new kits are infographic renders (WooCommerce product images, not changed);
+some long pages show both a body spec table and the v2 "Technical details" table.
+
 # Status update — project photos use the original gallery files (owner request)
 - _agst_media now references the original gallery attachments (same paths as on the live site, e.g.
   /wp-content/uploads/2026/01/4F39z93Q-1.webp), not the copies in uploads/agst-media (kept, unused).

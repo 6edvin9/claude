@@ -2489,8 +2489,12 @@ final class AGST_V2Build {
   if(count($tips)>=2)$out[]=['layout'=>'stack','eyebrow'=>'Ordering','title'=>'Ordering tips','parts'=>[['type'=>'checklist','items'=>array_values(array_unique($tips))]]];
   return $out;
  }
+ /** Editor notes left in the source copy ("Use this video section to show customers how...") read as customer copy. */
+ static function copyfix($spec){array_walk_recursive($spec,function(&$v){if(!is_string($v)||stripos($v,'use this')===false&&stripos($v,'show customers')===false)return;
+   $v=preg_replace(['~Use this video section to show customers how~i','~Use this section to help contractors and serious buyers understand the~i','~Use this section to show customers~i','~\bShow customers (the |how )?~'],['Watch how','Contractors and serious buyers can review the','See','See $1'],$v);});return $spec;}
  static function transform($spec,$pid){
   if(!is_array($spec)||!$spec)return $spec;
+  $spec=self::copyfix($spec);
   $have='';foreach($spec as $x)$have.=' '.($x['eyebrow']??'').' '.($x['title']??'');
   // the v2 specifications section lists every spec line, so body sections that are only a spec table go
   $spec=array_values(array_filter($spec,function($x){$pt=array_column((array)($x['parts']??[]),'type');return !($pt&&!array_diff($pt,['specs'])&&preg_match('~spec~i',($x['title']??'').' '.($x['eyebrow']??''))&&trim(wp_strip_all_tags((string)($x['text']??'')))==='');}));
@@ -2531,6 +2535,8 @@ final class AGST_V2Build {
   if($views){$seen=[];$imgs=[];foreach($views as $v){$k=AGST_V2::key($v['src']);if(isset($seen[$k]))continue;$seen[$k]=1;$imgs[]=$v;}
    $cta=null;if($res&&($res[count($res)-1]['layout']??'')==='cta')$cta=array_pop($res);
    $res[]=['layout'=>'stack','eyebrow'=>'Reference','title'=>'Product views & drawings','parts'=>[['type'=>'drawings','images'=>$imgs]]];if($cta)$res[]=$cta;}
+  // own-site media on https (upload URLs can come back as http:// and trigger mixed-content warnings)
+  $host=(string)parse_url(home_url(),PHP_URL_HOST);if($host!==''){array_walk_recursive($res,function(&$v)use($host){if(is_string($v)&&strpos($v,'http://'.$host)!==false)$v=str_replace('http://'.$host,'https://'.$host,$v);});}
   return $res;
  }
 }
