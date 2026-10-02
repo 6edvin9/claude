@@ -9,7 +9,7 @@
 if (!defined('ABSPATH')) { exit; }
 final class AGST_Catalog {
  const VERSION='0.3.1';
- const ASSET_VERSION = '2.3.6';
+ const ASSET_VERSION = '2.4.2';
  const META=['_elementor_data','_elementor_edit_mode','_elementor_template_type','_elementor_page_settings','_yoast_wpseo_title','_yoast_wpseo_metadesc','_agst_key','_agst_managed','_agst_media_inventory','_agst_version'];
  static function boot(){
   add_action('admin_menu',function(){add_submenu_page('woocommerce','Aluglobus Catalog Test','Aluglobus Catalog Test','manage_woocommerce','agst-catalog',[__CLASS__,'admin']);});

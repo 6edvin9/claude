@@ -2044,7 +2044,10 @@ final class AGST_Spec {
   if(preg_match('~(?:youtu\.be/|youtube(?:-nocookie)?\.com/(?:embed/|shorts/|watch\?v=))([a-zA-Z0-9_-]{11})~',$u,$m))$s=['video_type'=>'youtube','youtube_url'=>'https://www.youtube.com/watch?v='.$m[1]];
   elseif(preg_match('~vimeo\.com/(?:video/)?(\d+)~',$u,$m))$s=['video_type'=>'vimeo','vimeo_url'=>'https://vimeo.com/'.$m[1]];
   else $s=['video_type'=>'hosted','hosted_url'=>['url'=>$u,'id'=>'']];
-  $s['rel']='';$s['modestbranding']='yes';if(!empty($v['poster']['src'])){$s['show_image_overlay']='yes';$s['image_overlay']=['url'=>$v['poster']['src'],'id'=>(int)($v['poster']['id']??0)];$s['image_overlay_size']='full';$s['lightbox']='';}return self::w('video',$s,'agx-video-w');
+  $s['rel']='';$s['modestbranding']='yes';
+  // YouTube without a photo cover: use its own thumbnail so the tile is never blank and the player loads on click
+  if(empty($v['poster']['src'])&&$s['video_type']==='youtube')$v['poster']=['src'=>'https://i.ytimg.com/vi/'.$m[1].'/hqdefault.jpg','id'=>0];
+  if(!empty($v['poster']['src'])){$s['show_image_overlay']='yes';$s['image_overlay']=['url'=>$v['poster']['src'],'id'=>(int)($v['poster']['id']??0)];$s['image_overlay_size']='full';$s['lightbox']='';}return self::w('video',$s,'agx-video-w');
  }
  static function table($head,$rows,$cls=''){
   $h='<table'.($cls?' class="'.$cls.'"':'').'>';if($head){$h.='<thead><tr>';foreach($head as $c)$h.='<th>'.self::in($c).'</th>';$h.='</tr></thead>';}$h.='<tbody>';

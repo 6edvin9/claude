@@ -12,7 +12,7 @@ const fullOnly = args.includes('--nofull') ? false : true;
     const ctx = await browser.newContext(mode === 'm'
       ? { viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' }
       : { viewport: { width: 1366, height: 900 } });
-    await ctx.route('**/*', async r => { const u = new URL(r.request().url()); if (r.request().resourceType() === 'media' || /\.(mp4|mov|webm|m4v)(\?|$)/i.test(u.pathname)) return r.abort();
+    await ctx.route('**/*', async r => { const u = new URL(r.request().url()); if (r.request().resourceType() === 'media' || /\.(mp4|mov|webm|m4v)(\?|$)/i.test(u.pathname)) return r.abort(); if (u.hostname === 'i.ytimg.com') return r.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360"><rect width="480" height="360" fill="#3b4440"/><text x="240" y="330" fill="#9aa" font-size="18" text-anchor="middle" font-family="sans-serif">YouTube poster (blocked in test)</text></svg>' });
       if (!(/globusgates\.online$/.test(u.hostname) || /fonts\.(googleapis|gstatic)\.com$/.test(u.hostname))) return r.abort();
       for (let t = 0; t < 3; t++) { try { const resp = await r.fetch({ timeout: 60000 }); await r.fulfill({ response: resp }); return; } catch (e) { if (/closed|fulfill/i.test(e.message)) return; } } try { await r.abort(); } catch (_) {} });
     const page = await ctx.newPage();
@@ -50,7 +50,7 @@ const fullOnly = args.includes('--nofull') ? false : true;
           return { real: realImgs.length, realBroken, vids: document.querySelectorAll('.agx-vid, .agv-vid').length, v2: !!document.querySelector('.agv'), rel: document.querySelectorAll('.agx-rel-card').length, broken, pkgOk: pkg === navPkg, title: document.title, h1: document.querySelectorAll('h1').length, sections: document.querySelectorAll('.agx-el .agx-s').length, nested, overflow, emptyHref, raw, low: low.slice(0, 12), lowCount: low.length, height: document.body.scrollHeight, scrollW: document.documentElement.scrollWidth };
         });
         results[key + '-' + mode] = m;
-        await page.screenshot({ path: `shots/${key}-${mode}.png`, fullPage: true, timeout: 120000 });
+        if (!process.env.NOSHOT) await page.screenshot({ path: `shots/${key}-${mode}.png`, fullPage: true, timeout: 120000 });
         console.log(key, mode, JSON.stringify(m));
       } catch (e) { console.log(key, mode, 'ERR', e.message.slice(0, 200)); results[key + '-' + mode] = { err: e.message.slice(0, 200) }; }
     }
