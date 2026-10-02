@@ -34,6 +34,15 @@
 Screenshot method that works here: Playwright via HTTPS_PROXY with page.route -> route.fetch() -> route.fulfill()
 (Chromium itself rejects the cert chain); abort non-globusgates requests to avoid timeouts.
 
+## Decided fix for finding 2
+Do NOT use the Elementor shortcode widget for [ar-display]. Convert each spec part {"type":"shortcode","code":X} into
+{"type":"text","html":"<p>X</p>"} (text-editor widget, closes correctly, shortcode still runs where the AR plugin works).
+58015 also has it, but the owner said leave 58015/38472 specs alone: ASK the owner before touching 58015.
+
+## Owner instruction (latest)
+Work autonomously: act as designer, then developer, then QA, and repeat until every product page is perfect,
+desktop and mobile. 144 published products in 14 categories (list via /wp-json/wc/store/v1/products?per_page=100&page=1..2).
+
 ## Next
 1. Log in to https://globusgates.online/wp-login.php with Playwright (env creds), keep the session.
 2. Run task 3 + 4 (scripts/agst/task3-4-audit-and-rebuild-seo.js logic; it can run via page.evaluate in a wp-admin page).
