@@ -77,6 +77,7 @@ final class AGST_Storefront {
  <section class="agx-section agx-spec-section" id="agx-details"><div><p class="agx-eyebrow">The technical details</p><h2>Specify with confidence.</h2><p>Check the dimensions, material and configuration against your project requirements.</p></div><div class="agx-specs"><?php foreach(($r['specs']?:[$r['title']]) as $i=>$s):?><div><span><?php echo str_pad((string)($i+1),2,'0',STR_PAD_LEFT);?></span><p><?php echo esc_html($s);?></p></div><?php endforeach;?></div></section>
  <?php if($supporting):?><section class="agx-section" id="agx-projects"><div class="agx-section-heading"><div><p class="agx-eyebrow">Explore every angle</p><h2>See more. Plan better.</h2></div><p>Product views, construction details and supporting images from this listing.</p></div><div class="agx-mosaic"><?php foreach($supporting as $i=>$im):?><figure><button class="agx-zoom" data-full="<?php echo esc_url($im['url']);?>" aria-label="Enlarge product image <?php echo $i+1;?>"><?php echo self::picture($im,$title);?></button><figcaption><span><?php echo str_pad((string)($i+1),2,'0',STR_PAD_LEFT);?></span><?php echo esc_html($im['alt']?:$title);?><span>↗</span></figcaption></figure><?php endforeach;?></div></section><?php endif;?>
 
+ <?php if(class_exists('AGST_Related'))echo AGST_Related::section($p->get_id());?>
  <?php if($r['faq']):?><section class="agx-section agx-faq" id="agx-faq"><div><p class="agx-eyebrow">Before you build</p><h2>A few things worth knowing.</h2></div><div><?php foreach($r['faq'] as $qa):?><details><summary><?php echo esc_html($qa[0]);?><span aria-hidden="true">＋</span></summary><p><?php echo esc_html($qa[1]);?></p></details><?php endforeach;?></div></section><?php endif;?>
  <section class="agx-closing"><div><p class="agx-eyebrow">Make the next step a clear one</p><h2>Bring your project together.</h2><p>Choose the right configuration and coordinate the rest of your material package.</p></div><a class="agx-button" href="#agx-configure">Choose your options ↑</a></section>
  <dialog class="agx-lightbox" aria-label="Enlarged product image"><button class="agx-lightbox-close" aria-label="Close enlarged image">✕</button><img alt=""></dialog>
@@ -2214,7 +2215,7 @@ final class AGST_Media {
  static function yt($s){return preg_match('~(?:youtu\.be/|v=|embed/|shorts/|^)([A-Za-z0-9_-]{11})(?:$|[?&#/\s])~',trim((string)$s),$m)?$m[1]:'';}
  static function images($pid){return array_values(array_filter(array_map('intval',(array)self::get($pid)['images']),function($id){return $id&&wp_attachment_is_image($id);}));}
  /* ---------- clean copies ---------- */
- static function clean_copy($src_id,$clean_rel,$alt='',$caption=''){
+ static function clean_copy($src_id,$clean_rel,$alt='',$caption='',$ref=''){
   $src_id=(int)$src_id;
   $have=get_posts(['post_type'=>'attachment','post_status'=>'inherit','meta_key'=>'_agst_clean_of','meta_value'=>$src_id,'fields'=>'ids','numberposts'=>1]);
   if($have){$id=(int)$have[0];if($alt!=='')update_post_meta($id,'_wp_attachment_image_alt',$alt);return $id;}
@@ -2238,11 +2239,23 @@ final class AGST_Media {
   wp_update_attachment_metadata($id,wp_generate_attachment_metadata($id,$saved['path']));
   foreach($iw as $x)add_filter('wp_generate_attachment_metadata',$x[1],$x[0],2);
   remove_filter('intermediate_image_sizes_advanced',$keep,99);
-  update_post_meta($id,'_wp_attachment_image_alt',$alt);update_post_meta($id,'_agst_clean_of',$src_id);update_post_meta($id,'_agst_clean_src',$clean_rel);
+  // Safety: the clean file must show the same photo as the gallery attachment (some originals on disk were overwritten
+  // by other uploads with the same name). Compare with the attachment's own thumbnail; discard our copy on mismatch.
+  $rh=preg_match('~^[01]{256}$~',(string)$ref)?$ref:(($tp=self::thumb_path($src_id))?self::dhash($tp):null);$d=is_file($saved['path'])?self::hdist($rh,self::dhash($saved['path'])):-1;
+  if($d>80){wp_delete_attachment($id,true);return new WP_Error('mismatch','clean source is a different photo (distance '.$d.') for '.$clean_rel);}
+  update_post_meta($id,'_wp_attachment_image_alt',$alt);update_post_meta($id,'_agst_clean_of',$src_id);update_post_meta($id,'_agst_clean_src',$clean_rel);update_post_meta($id,'_agst_clean_dist',$d);
   return $id;
  }
+ static function thumb_path($id){$m=wp_get_attachment_metadata($id);$up=wp_upload_dir();$dir=$up['basedir'].'/'.dirname((string)get_post_meta($id,'_wp_attached_file',true));foreach(['medium','thumbnail','medium_large'] as $k){if(!empty($m['sizes'][$k]['file'])&&is_file($dir.'/'.$m['sizes'][$k]['file']))return $dir.'/'.$m['sizes'][$k]['file'];}return null;}
+ /** 256-bit difference hash (GD); null when the image cannot be read. */
+ static function dhash($file){if(!function_exists('imagecreatefromstring'))return null;$im=@imagecreatefromstring((string)file_get_contents($file));if(!$im)return null;$s=imagecreatetruecolor(17,16);imagecopyresampled($s,$im,0,0,0,0,17,16,imagesx($im),imagesy($im));$b='';
+  for($y=0;$y<16;$y++){for($x=0;$x<16;$x++){$a=imagecolorat($s,$x,$y);$c=imagecolorat($s,$x+1,$y);$la=(($a>>16)&255)*299+(($a>>8)&255)*587+($a&255)*114;$lc=(($c>>16)&255)*299+(($c>>8)&255)*587+($c&255)*114;$b.=$la>$lc?'1':'0';}}imagedestroy($im);imagedestroy($s);return $b;}
+ static function hdist($a,$b){if($a===null||$b===null||strlen($a)!==strlen($b))return -1;$n=0;for($i=0;$i<strlen($a);$i++)if($a[$i]!==$b[$i])$n++;return $n;}
  /** Resolve a gallery attachment on this site by its upload path (IDs differ between sites). */
- static function by_path($rel){global $wpdb;$id=(int)$wpdb->get_var($wpdb->prepare("SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key='_wp_attached_file' AND meta_value=%s LIMIT 1",$rel));return $id;}
+ static function by_path($rel,$ref=''){global $wpdb;$ids=array_map('intval',$wpdb->get_col($wpdb->prepare("SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key='_wp_attached_file' AND meta_value=%s",$rel)));
+  if(count($ids)<2||!preg_match('~^[01]{256}$~',(string)$ref))return $ids?$ids[0]:0;
+  // Several attachments share this file path: take the one whose thumbnail is the photo the gallery shows.
+  $best=$ids[0];$bd=999;foreach($ids as $id){$t=self::thumb_path($id);$d=$t?self::hdist($ref,self::dhash($t)):-1;if($d>=0&&$d<$bd){$bd=$d;$best=$id;}}return $best;}
  /** AJAX: payload {product_id:{title,intro,images:[{file,clean,alt,caption}],videos:[{id,title}]}} -> clean copies + meta. */
  static function ajax_apply(){
   if(!current_user_can('manage_woocommerce')||!wp_verify_nonce((string)($_POST['nonce']??''),'wp_rest'))wp_send_json_error('forbidden',403);
@@ -2252,11 +2265,11 @@ final class AGST_Media {
    $pid=(int)$key;if(!$pid&&!empty($d['slug'])){$p=get_page_by_path((string)$d['slug'],OBJECT,'product');$pid=$p?$p->ID:0;}
    if(!$pid||get_post_type($pid)!=='product'){$out[$key]='no product';continue;}
    $ids=[];$err=[];
-   foreach((array)($d['images']??[]) as $im){$src=self::by_path((string)$im['file']);if(!$src){$err[]='src? '.$im['file'];continue;}
-    $id=self::clean_copy($src,(string)$im['clean'],(string)($im['alt']??''),(string)($im['caption']??''));if(is_wp_error($id)){$err[]=$id->get_error_message();continue;}$ids[]=$id;}
+   foreach((array)($d['images']??[]) as $im){$ref=(string)($im['ref']??'');$src=self::by_path((string)$im['file'],$ref);if(!$src){$err[]='src? '.$im['file'];continue;}
+    $id=self::clean_copy($src,(string)$im['clean'],(string)($im['alt']??''),(string)($im['caption']??''),$ref);if(is_wp_error($id)){$err[]=$id->get_error_message();continue;}$ids[]=$id;}
    $vids=[];foreach((array)($d['videos']??[]) as $v){$y=self::yt($v['id']??'');if($y)$vids[]=['id'=>$y,'title'=>sanitize_text_field((string)($v['title']??''))];}
    $cur=self::get($pid);
-   update_post_meta($pid,self::META,['title'=>sanitize_text_field((string)($d['title']??$cur['title'])),'intro'=>sanitize_text_field((string)($d['intro']??$cur['intro'])),'images'=>$ids?:$cur['images'],'videos'=>array_key_exists('videos',$d)?$vids:$cur['videos'],'v'=>1]);
+   update_post_meta($pid,self::META,['title'=>sanitize_text_field((string)($d['title']??$cur['title'])),'intro'=>sanitize_text_field((string)($d['intro']??$cur['intro'])),'images'=>($ids||!empty($d['replace']))?$ids:$cur['images'],'videos'=>array_key_exists('videos',$d)?$vids:$cur['videos'],'v'=>1]);
    $out[$pid]=['images'=>count($ids),'videos'=>count($vids),'errors'=>$err];
   }
   wp_send_json_success($out);
@@ -2307,3 +2320,29 @@ final class AGST_Media {
  }
 }
 AGST_Media::boot();
+
+// ===== Related products in this system + "Before you order" checklist (round 5) =====
+// Families live in option agst_families (JSON list: key,title,text,members[slugs],steps[]), uploaded with agst_families_save.
+// Slugs keep it portable to live. A product shows its first family: real catalog products, linked, plus the checklist.
+final class AGST_Related {
+ static function boot(){add_action('wp_ajax_agst_families_save',function(){if(!current_user_can('manage_woocommerce')||!wp_verify_nonce((string)($_POST['nonce']??''),'wp_rest'))wp_send_json_error('forbidden',403);$f=json_decode(wp_unslash((string)($_POST['families']??'')),true);if(!is_array($f))wp_send_json_error('bad json');update_option('agst_families',wp_json_encode($f),false);wp_send_json_success(count($f));});}
+ static function family($pid){$slug=get_post_field('post_name',$pid);$f=json_decode((string)get_option('agst_families','[]'),true);foreach((array)$f as $x){if(in_array($slug,(array)($x['members']??[]),true))return $x;}return null;}
+ static function section($pid){
+  $f=self::family($pid);if(!$f)return '';$cards='';$n=0;
+  foreach((array)$f['members'] as $s){if($n>=8)break;$p=get_page_by_path($s,OBJECT,'product');if(!$p||$p->ID==$pid||$p->post_status!=='publish')continue;$prod=wc_get_product($p->ID);if(!$prod||!$prod->is_visible())continue;$n++;
+   $img=get_the_post_thumbnail_url($p->ID,'woocommerce_thumbnail')?:wc_placeholder_img_src();
+   $cards.='<a class="agx-rel-card" href="'.esc_url(get_permalink($p->ID)).'"><span class="agx-rel-img"><img src="'.esc_url($img).'" alt="'.esc_attr($prod->get_name()).'" loading="lazy" decoding="async"></span><span class="agx-rel-name">'.esc_html($prod->get_name()).'</span><span class="agx-rel-price">'.wp_kses_post($prod->get_price_html()?:'Price on request').'</span></a>';}
+  $steps='';foreach((array)($f['steps']??[]) as $i=>$t)$steps.='<li><span>'.str_pad((string)($i+1),2,'0',STR_PAD_LEFT).'</span><p>'.esc_html($t).'</p></li>';
+  if($cards===''&&$steps==='')return '';
+  return '<section class="agx-section agx-related" id="agx-related"><div class="agx-section-heading"><div><p class="agx-eyebrow">Complete the system</p><h2>'.esc_html($f['title']).'</h2></div><p>'.esc_html($f['text']).'</p></div>'
+   .($cards?'<div class="agx-rel-grid">'.$cards.'</div>':'')
+   .($steps?'<div class="agx-order"><h3>Before you order</h3><ol class="agx-order-steps">'.$steps.'</ol></div>':'').'</section>';
+ }
+}
+AGST_Related::boot();
+// Admin read-only helper: selected meta for a list of posts (QA of clean copies).
+add_action('wp_ajax_agst_meta_get',function(){if(!current_user_can('manage_woocommerce')||!wp_verify_nonce((string)($_POST['nonce']??''),'wp_rest'))wp_send_json_error('forbidden',403);$keys=array_filter(explode(',',(string)($_POST['keys']??'')));$out=[];foreach(array_map('intval',explode(',',(string)($_POST['ids']??''))) as $id){if(!$id)continue;foreach($keys as $k)$out[$id][$k]=get_post_meta($id,$k,true);}wp_send_json_success($out);});
+// Reject a clean copy that does not match its gallery photo: it is no longer reused or shown (kept in the library for audit).
+add_action('wp_ajax_agst_media_reject',function(){if(!current_user_can('manage_woocommerce')||!wp_verify_nonce((string)($_POST['nonce']??''),'wp_rest'))wp_send_json_error('forbidden',403);$out=[];foreach(array_map('intval',explode(',',(string)($_POST['ids']??''))) as $id){$src=get_post_meta($id,'_agst_clean_of',true);if($src===''){$out[$id]='not a clean copy';continue;}update_post_meta($id,'_agst_clean_rejected',$src);delete_post_meta($id,'_agst_clean_of');
+ foreach(get_posts(['post_type'=>'product','post_status'=>'any','numberposts'=>-1,'fields'=>'ids','meta_key'=>'_agst_media']) as $pid){$m=get_post_meta($pid,'_agst_media',true);if(is_array($m)&&in_array($id,array_map('intval',(array)$m['images']),true)){$m['images']=array_values(array_diff(array_map('intval',$m['images']),[$id]));update_post_meta($pid,'_agst_media',$m);$out[$id][]=$pid;}}}
+ wp_send_json_success($out);});

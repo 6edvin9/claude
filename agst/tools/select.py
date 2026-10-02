@@ -33,6 +33,9 @@ for pid,r in R['products'].items():
             sel.append({'src_id':i,'file':re.sub(r'^https?://[^/]+/wp-content/uploads/','',m[i]['url']),'clean':u['path'],'clean_kind':u['kind'],'w':u.get('w'),'h':u.get('h'),'date':m[i]['date'][:10],'type':c,'pool':pool,
                         'alt':f"{label[0].upper()+label[1:]} installed by Aluglobus Aluminum Systems",'caption':f"{label[0].upper()+label[1:]} project"})
     out[pid]={'slug':P[pid]['url'].rstrip('/').split('/')[-1],'name':P[pid]['name'],'images':sel}
+import sys;sys.path.insert(0,'.');from refhash import ref
+for v in out.values():
+    for i in v['images']: i['ref']=ref(f"thumbs/{i['src_id']}.jpg")
 json.dump(out,open('/home/user/claude/agst/media/assign.json','w'),indent=1,ensure_ascii=False)
 print('products',len(out),'images total',sum(len(v['images']) for v in out.values()),'unique',len({i['src_id'] for v in out.values() for i in v['images']}),'skipped(watermarked)',skipped)
 for k,v in out.items(): print(k,len(v['images']),v['name'][:50])

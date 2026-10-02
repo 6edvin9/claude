@@ -21,7 +21,7 @@ for pid in ids:
     if a:
         d['slug']=a['slug'];d['title']=title(a['images'])
         d['intro']='Completed installations by Aluglobus Aluminum Systems using this system. Sizes, layouts and accessories vary by project.'
-        d['images']=[{k:i[k] for k in('file','clean','alt','caption')} for i in a['images']]
+        d['images']=[{k:i[k] for k in('file','clean','alt','caption','ref')} for i in a['images']]
     d['videos']=[{'id':y,'title':V['videos'][y]} for y in vid.get(pid,[])][:6]
     out[pid]=d
 json.dump(out,open('payload.json','w'))
