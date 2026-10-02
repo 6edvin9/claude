@@ -11,6 +11,29 @@
   staging-only admin user. Credentials come from env vars `WP_USER` / `WP_PASS` (never in chat, never in git).
   Domain globusgates.online allowed in the environment's network settings. Still never touch aluglobusfence.com.
 
+## Design QA findings (2026-10-02, cloud browser, screenshots at 1366 and 390, cache bypassed with ?nc=)
+1. CACHE: WP-Optimize still serves Oct 1 pages to visitors (`wpo-cache-status: cached`, "Last modified 1 October").
+   The `?_wpo_purge=d2942c5514` fetch did NOT clear it. Purge properly (WP-Optimize > Cache > Purge cache, or admin bar) and
+   verify with `curl -sI <product url>` that `wpo-cache-status` is not an Oct 1 page.
+2. BUILDER BUG (all pages with [ar-display] shortcode parts, e.g. 58025, 58015, 58036, 57987 and other pergolas):
+   each Elementor shortcode widget renders with ONE MISSING `</div>`, so every following `.agx-s` section is nested
+   inside the packages section (inset "boxed" sections, CTA loses its background). Owner: KEEP the [ar-display] shortcodes.
+   Fix in AGST_Spec (storefront.php): emit the shortcode differently (e.g. a text-editor/html widget containing the
+   shortcode, or check what filter strips the closing div), rebuild those products, then verify all `.agx-s` have depth 0:
+   `[...document.querySelectorAll('.agx-el .e-con.agx-s')].filter(e=>e.parentElement.closest('.agx-s')).length === 0`.
+   Also [ar-display] renders as raw text on staging (AR plugin not rendering) - ask owner whether the AR plugin is active on staging.
+3. BUY BOX: Add to cart was transparent with theme-red text; Buy Now theme red (#cc0000, theme rule via `#shop-now`).
+   Fixed + tested in agx-fixes-1.1.css (append to storefront.css, bump ASSET_VERSION to 1.0.2).
+4. CARD GRIDS left orphan holes (5 cards = 3 + 2 + empty). agx-fixes-1.1.css makes card grids flex-wrap so the last row stretches.
+5. The 3 sampled new SEO products (63803, 63717, 63276) are still the old build: dark text on dark background, unreadable.
+   Task 4 (rebuild _agst_el 1.0 with force=1) fixes it.
+6. Mobile: two colour pickers on variable products (a "Color / Choose an option" row plus swatches); trust bar cramped in
+   3 columns at 390px; chat widget overlaps the product title. Still to fix.
+7. OK: no horizontal overflow at 390px on any sampled page; no grey `.agx-btn` buttons.
+
+Screenshot method that works here: Playwright via HTTPS_PROXY with page.route -> route.fetch() -> route.fulfill()
+(Chromium itself rejects the cert chain); abort non-globusgates requests to avoid timeouts.
+
 ## Next
 1. Log in to https://globusgates.online/wp-login.php with Playwright (env creds), keep the session.
 2. Run task 3 + 4 (scripts/agst/task3-4-audit-and-rebuild-seo.js logic; it can run via page.evaluate in a wp-admin page).
