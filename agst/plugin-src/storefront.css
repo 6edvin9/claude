@@ -1096,3 +1096,8 @@ body.single-product .chaty .on-hover-text,body.single-product .chaty .chaty-tool
 }
 /* v2.3: text-only card beside photo cards keeps its own height */
 .agv .agx-el .agx-cards:has(>.agx-card--media)>.agx-card:not(.agx-card--media){align-self:start}
+/* v2.4: 3+ column tables fit the phone width instead of running off the right edge */
+@media(max-width:720px){
+ .agv .agx-el .agx-table table:has(thead th:nth-child(3)),.agv .agx-el .agx-table table:has(tr>:nth-child(3)){table-layout:fixed;width:100%!important;min-width:0!important;font-size:13px!important}
+ .agv .agx-el .agx-table table:has(tr>:nth-child(3)) :is(th,td){padding:10px 8px!important;overflow-wrap:anywhere;hyphens:auto;font-size:13px!important;line-height:1.45}
+}
