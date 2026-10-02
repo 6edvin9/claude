@@ -1,3 +1,9 @@
+# Status update — project photos use the original gallery files (owner request)
+- _agst_media now references the original gallery attachments (same paths as on the live site, e.g.
+  /wp-content/uploads/2026/01/4F39z93Q-1.webp), not the copies in uploads/agst-media (kept, unused).
+- Product-page alt texts/captions are in option agst_media_text (attachment id -> alt/cap); gallery attachments are unchanged.
+- Note: originals from the Jan 2026 (and older) gallery batches carry the burned-in watermark; July/Aug 2026 photos are clean.
+
 # Status (2026-10-02, session 2, part 3) — v2 product page design
 
 - **v2 template live on staging for all 144 products** (option agst_v2='all'; per product meta _agst_tpl_v2; ?v1=1 shows the old

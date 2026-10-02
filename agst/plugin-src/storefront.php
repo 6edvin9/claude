@@ -2211,6 +2211,11 @@ add_action('wp_ajax_agst_media_probe',function(){
 // The gallery itself is not changed. Editable per product in the "Project photos & videos" box.
 final class AGST_Media {
  const META='_agst_media';
+ /** Product-page alt/caption for a photo: agst_media_text map first (gallery originals keep their own fields), then the attachment. */
+ static function text($id){static $m=null;if($m===null){$m=json_decode((string)get_option('agst_media_text','{}'),true);if(!is_array($m))$m=[];}return $m[(string)(int)$id]??null;}
+ static function alt($id){$t=self::text($id);return $t&&($t['alt']??'')!==''?$t['alt']:(string)get_post_meta($id,'_wp_attachment_image_alt',true);}
+ static function cap($id){$t=self::text($id);return $t&&($t['cap']??'')!==''?$t['cap']:(string)wp_get_attachment_caption($id);}
+
  static function boot(){
   add_action('add_meta_boxes_product',function(){add_meta_box('agst-media','Project photos & videos (below the product body)',[__CLASS__,'box'],'product','normal','high');});
   add_action('save_post_product',[__CLASS__,'save'],10,1);
@@ -2314,7 +2319,7 @@ final class AGST_Media {
   $m=self::get($pid);$ids=self::images($pid);$h='';
   if($ids){$n=count($ids);$title=$m['title']!==''?$m['title']:'Real projects';$intro=$m['intro']!==''?$m['intro']:'Completed installations by Aluglobus Aluminum Systems. Sizes, layouts and accessories vary by project.';
    $h.='<section class="agx-section agx-real" id="agx-real"><div class="agx-section-heading"><div><p class="agx-eyebrow">Real projects</p><h2>'.esc_html($title).'</h2></div><p>'.esc_html($intro).'</p></div><div class="agx-real-grid" data-lb-group="real">';
-   foreach($ids as $i=>$id){$full=wp_get_attachment_image_url($id,'full');$alt=trim((string)get_post_meta($id,'_wp_attachment_image_alt',true));$cap=wp_get_attachment_caption($id);
+   foreach($ids as $i=>$id){$full=wp_get_attachment_image_url($id,'full');$alt=trim(AGST_Media::alt($id));$cap=AGST_Media::cap($id);
     $h.='<figure class="agx-real-item'.($i>=8?' is-more':'').'"><button type="button" class="agx-zoom" data-full="'.esc_url($full).'" data-caption="'.esc_attr($cap?:$alt).'" aria-label="Enlarge project photo '.($i+1).' of '.$n.'">'.self::img($id,$alt,$i===0?'(max-width:720px) 100vw, 50vw':'(max-width:720px) 50vw, 25vw',$i<3).'</button></figure>';}
    $h.='</div>'.($n>8?'<div class="agx-real-actions"><button type="button" class="agx-button agx-button-line agx-real-more" aria-expanded="false">Show all '.$n.' photos</button></div>':'').'</section>';}
   $vs=self::videos($pid,$page);
@@ -2368,7 +2373,7 @@ final class AGST_V2 {
  static function is_kit($p){$n=strtolower($p->get_name());return (bool)preg_match('~kit|gate|fence|pergola|patio|roof system|cladding|clad1|louver~',$n)&&!preg_match('~hinge|bracket|screw|spacer|cap\b|plug|stopper|latch|bolt|anchor|wheel|track|roller|catcher|post kit|slat box|frame kit only~',$n);}
  /** Hero media: real project photos first for kits, product images first for parts; AI scenes only as a last resort. */
  static function hero($p,$model,$body=''){
-  $real=[];if(class_exists('AGST_Media'))foreach(AGST_Media::images($p->get_id()) as $id)$real[]=['url'=>wp_get_attachment_url($id),'thumb'=>wp_get_attachment_image_url($id,'medium_large')?:wp_get_attachment_url($id),'alt'=>(string)get_post_meta($id,'_wp_attachment_image_alt',true),'tag'=>'Real project'];
+  $real=[];if(class_exists('AGST_Media'))foreach(AGST_Media::images($p->get_id()) as $id)$real[]=['url'=>wp_get_attachment_url($id),'thumb'=>wp_get_attachment_image_url($id,'medium_large')?:wp_get_attachment_url($id),'alt'=>AGST_Media::alt($id),'tag'=>'Real project'];
   if(count($real)<4&&$body&&preg_match_all('~<img[^>]+src="([^"]+)"~i',$body,$mm)){foreach($mm[1] as $u){if(self::cls($u)!=='R')continue;$full=preg_replace('~-\d+x\d+(?=\.\w+$)~','',$u);$real[]=['url'=>$full,'thumb'=>$u,'alt'=>'','tag'=>'Real project'];if(count($real)>=8)break;}}
   $prod=[];$ai=[];foreach($model['hero'] as $im){$c=self::cls($im['url']);$it=['url'=>$im['url'],'thumb'=>$im['url'],'alt'=>$im['alt']??'','tag'=>$c==='R'?'Real project':''];if($c==='X')continue;if($c==='A')$ai[]=$it;elseif($c==='R')array_unshift($real,$it);else $prod[]=$it;}
   $list=self::is_kit($p)?array_merge(array_slice($real,0,10),$prod):array_merge($prod,array_slice($real,0,8));
@@ -2423,7 +2428,7 @@ final class AGST_V2 {
  <?php if($has_el):?><div class="agv-body agx-el" id="agv-overview"><?php echo $el;?></div><?php endif;?>
  <?php if($real_ids||$extra_real):$n=count($real_ids)+count($extra_real);?>
  <section class="agv-sec agv-projects" id="agv-projects"><div class="agv-wrap"><div class="agv-head"><p class="agv-kicker">Real projects</p><h2><?php echo esc_html($media['title']?:'Installed by our customers');?></h2><p><?php echo esc_html($media['intro']?:'Completed installations by Aluglobus Aluminum Systems. Sizes, layouts and accessories vary by project.');?></p></div>
-  <div class="agv-pgrid" data-lb-group="projects"><?php $i=0;foreach($real_ids as $id){$alt=(string)get_post_meta($id,'_wp_attachment_image_alt',true);echo '<figure class="agv-pi'.($i>=7?' is-more':'').'"><button type="button" class="agv-zoom" data-full="'.esc_url(wp_get_attachment_url($id)).'" data-caption="'.esc_attr(wp_get_attachment_caption($id)?:$alt).'" aria-label="Enlarge project photo '.($i+1).'">'.AGST_Media::img($id,$alt,$i===0?'(max-width:720px) 100vw, 50vw':'(max-width:720px) 50vw, 25vw',false).'</button></figure>';$i++;}
+  <div class="agv-pgrid" data-lb-group="projects"><?php $i=0;foreach($real_ids as $id){$alt=AGST_Media::alt($id);echo '<figure class="agv-pi'.($i>=7?' is-more':'').'"><button type="button" class="agv-zoom" data-full="'.esc_url(wp_get_attachment_url($id)).'" data-caption="'.esc_attr(AGST_Media::cap($id)?:$alt).'" aria-label="Enlarge project photo '.($i+1).'">'.AGST_Media::img($id,$alt,$i===0?'(max-width:720px) 100vw, 50vw':'(max-width:720px) 50vw, 25vw',false).'</button></figure>';$i++;}
    foreach($extra_real as $im){echo '<figure class="agv-pi'.($i>=7?' is-more':'').'"><button type="button" class="agv-zoom" data-full="'.esc_url($im['url']).'" data-caption="'.esc_attr($im['alt']?:$title).'"><img src="'.esc_url($im['url']).'" alt="'.esc_attr($im['alt']?:$title).'" loading="lazy" decoding="async"></button></figure>';$i++;}?></div>
   <?php if($n>7):?><div class="agv-center"><button type="button" class="agv-btn agv-btn--ghost agv-more" aria-expanded="false" data-more="Show all <?php echo $n;?> photos" data-less="Show fewer photos">Show all <?php echo $n;?> photos</button></div><?php endif;?></div></section>
  <?php endif;?>
@@ -2493,7 +2498,7 @@ final class AGST_V2Build {
   $pool=[];$used=[];
   foreach($spec as $s){if(!empty($s['media']['src']))$used[AGST_V2::key($s['media']['src'])]=1;foreach((array)($s['parts']??[]) as $p)foreach((array)($p['images']??[]) as $im)if(!empty($im['src']))$used[AGST_V2::key($im['src'])]=1;}
   // body takes photos from the end of the list (the hero carousel starts from the front); bands prefer landscape
-  if(class_exists('AGST_Media'))foreach(array_reverse(AGST_Media::images($pid)) as $id){$u=wp_get_attachment_url($id);if(!$u||isset($used[AGST_V2::key($u)]))continue;$m=wp_get_attachment_metadata($id);$pool[]=['src'=>$u,'id'=>$id,'alt'=>(string)get_post_meta($id,'_wp_attachment_image_alt',true),'caption'=>wp_get_attachment_caption($id),'land'=>($m['width']??0)>=($m['height']??1)];}
+  if(class_exists('AGST_Media'))foreach(array_reverse(AGST_Media::images($pid)) as $id){$u=wp_get_attachment_url($id);if(!$u||isset($used[AGST_V2::key($u)]))continue;$m=wp_get_attachment_metadata($id);$pool[]=['src'=>$u,'id'=>$id,'alt'=>AGST_Media::alt($id),'caption'=>AGST_Media::cap($id),'land'=>($m['width']??0)>=($m['height']??1)];}
   $take=function($land=false)use(&$pool){if($land){foreach($pool as $i=>$x){if(!empty($x['land'])){array_splice($pool,$i,1);return $x;}}return null;}return array_shift($pool);};
   $views=[];$out=[];
   foreach($spec as $s){
@@ -2527,3 +2532,11 @@ final class AGST_V2Build {
 }
 // Admin: switch products to the v2 page (meta _agst_tpl_v2), staging pilot.
 add_action('wp_ajax_agst_tpl_set',function(){if(!current_user_can('manage_woocommerce')||!wp_verify_nonce((string)($_POST['nonce']??''),'wp_rest'))wp_send_json_error('forbidden',403);$on=!empty($_POST['on']);$o=[];foreach(array_map('intval',explode(',',(string)($_POST['ids']??''))) as $id){if(!$id||get_post_type($id)!=='product')continue;if($on)update_post_meta($id,'_agst_tpl_v2',1);else delete_post_meta($id,'_agst_tpl_v2');$o[]=$id;}wp_send_json_success($o);});
+// Admin: point product photos at the original gallery images (same files/paths as the live site) instead of the
+// generated copies in uploads/agst-media; the copies' alt/caption move to the agst_media_text map. Copies are kept.
+add_action('wp_ajax_agst_media_use_originals',function(){if(!current_user_can('manage_woocommerce')||!wp_verify_nonce((string)($_POST['nonce']??''),'wp_rest'))wp_send_json_error('forbidden',403);
+ $map=json_decode((string)get_option('agst_media_text','{}'),true);if(!is_array($map))$map=[];$out=[];
+ foreach(get_posts(['post_type'=>'product','post_status'=>'any','numberposts'=>-1,'fields'=>'ids','meta_key'=>'_agst_media']) as $pid){$m=get_post_meta($pid,'_agst_media',true);if(!is_array($m)||empty($m['images']))continue;$new=[];$sw=0;
+  foreach(array_map('intval',$m['images']) as $id){$src=(int)get_post_meta($id,'_agst_clean_of',true);if($src&&get_post_type($src)==='attachment'){$map[(string)$src]=['alt'=>(string)get_post_meta($id,'_wp_attachment_image_alt',true),'cap'=>(string)wp_get_attachment_caption($id)];$new[]=$src;$sw++;}else $new[]=$id;}
+  $m['images']=array_values(array_unique($new));$m['originals']=1;update_post_meta($pid,'_agst_media',$m);$out[$pid]=$sw;}
+ update_option('agst_media_text',wp_json_encode($map),false);wp_send_json_success(['products'=>count($out),'swapped'=>array_sum($out),'texts'=>count($map)]);});
