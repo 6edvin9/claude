@@ -51,7 +51,7 @@ final class AGST_Storefront {
   if($v['type']==='video')return '<div class="agx-video"><video controls playsinline preload="none" aria-label="'.esc_attr($title).' video" src="'.esc_url($url).'"></video></div>';
   return '<a class="agx-button agx-button-line" href="'.esc_url($url).'">View supporting media ↗</a>';
  }
- static function render($model){extract($model);$title=$r['title'];$shop=wc_get_page_permalink('shop');$contact=get_page_by_path('contact-us')?:get_page_by_path('contact');$contact_url=$contact?get_permalink($contact):'';$price=$p->get_price_html();$help=$contact_url?:'#agx-details';
+ static function render($model){if(class_exists('AGST_V2')&&AGST_V2::on($model['p']->get_id())){AGST_V2::render($model);return;}extract($model);$title=$r['title'];$shop=wc_get_page_permalink('shop');$contact=get_page_by_path('contact-us')?:get_page_by_path('contact');$contact_url=$contact?get_permalink($contact):'';$price=$p->get_price_html();$help=$contact_url?:'#agx-details';
  ?>
  <main class="agx" id="agx-product" data-product-id="<?php echo (int)$p->get_id();?>">
  <div class="agx-breadcrumb"><a href="<?php echo esc_url(AGST_Catalog::local_url($shop));?>">Shop</a><span>/</span><span><?php echo esc_html($r['family']);?></span><span>/</span><span><?php echo esc_html($title);?></span></div>
@@ -1976,6 +1976,7 @@ final class AGST_ElBuild {
   delete_transient('agst_cc_'.$id);
   $spec=json_decode((string)get_post_meta($id,'_agst_page_spec',true),true);
   if(!is_array($spec)||!$spec){$c=AGST_Content::get($p);$spec=AGST_Spec::from_sections($c['sections']);}
+  if(class_exists('AGST_V2Build')&&AGST_V2Build::enabled($id))$spec=AGST_V2Build::transform($spec,$id);
   $data=AGST_Spec::build($spec);
   update_post_meta($id,'_elementor_data',wp_slash(wp_json_encode($data)));
   update_post_meta($id,'_elementor_edit_mode','builder');
@@ -2022,7 +2023,9 @@ final class AGST_Spec {
  }
  static function image($im,$cls='agx-img'){
   if(empty($im['src']))return null;$id=!empty($im['id'])?(int)$im['id']:self::att($im['src']);$url=$id?wp_get_attachment_url($id):$im['src'];if(!$url)return null;
-  $s=['image'=>['url'=>$url,'id'=>$id?:'','alt'=>(string)($im['alt']??''),'source'=>'library'],'image_size'=>'large','link_to'=>'file','open_lightbox'=>'yes'];
+  // theme "large" is only 350px: big placements use the full file, grids the 768px size
+  $size=preg_match('~split-img|band-img~',$cls)?'full':(preg_match('~gallery-img|card-img~',$cls)?'medium_large':'large');
+  $s=['image'=>['url'=>$url,'id'=>$id?:'','alt'=>(string)($im['alt']??''),'source'=>'library'],'image_size'=>$size,'link_to'=>'file','open_lightbox'=>'yes'];
   $cap=trim((string)($im['caption']??''));if($cap!==''){$s['caption_source']='custom';$s['caption']=self::txt($cap);}
   return self::w('image',$s,$cls);
  }
@@ -2059,6 +2062,7 @@ final class AGST_Spec {
    case 'buttons':return [self::buttons($p['items']??[])];
    case 'note':return [self::text('<blockquote class="agx-note">'.self::rich($p['html']??'').'</blockquote>','agx-text agx-note-w')];
    // Shortcodes go in a text-editor widget: Elementor's shortcode widget dropped a closing </div> here and nested every later section.
+   case 'drawings':$h='<div class="agx-draw-grid">';foreach((array)($p['images']??[]) as $x){if(empty($x['src']))continue;$h.='<a href="'.esc_url($x['src']).'"><img src="'.esc_url($x['src']).'" alt="'.esc_attr($x['alt']??'').'" loading="lazy"></a>';}$h.='</div>';return [self::w('toggle',['tabs'=>[['_id'=>self::uid(),'tab_title'=>'Show '.count((array)$p['images']).' product views and drawings','tab_content'=>$h]]],'agx-acc agx-drawings')];
    case 'shortcode':$code=trim(wp_strip_all_tags((string)($p['code']??'')));return $code===''?[]:[self::w('text-editor',['editor'=>'<div class="agx-ar">'.$code.'</div>'],'agx-text agx-shortcode')];
    case 'stats':$it=[];foreach((array)($p['items']??[]) as $x){$it[]=self::c([self::head('p',$x['label']??'','agx-stat-label'),self::head('p',$x['value']??'','agx-stat-value')],'agx-stat');}return $it?[self::c($it,'agx-grid agx-stats agx-cols-'.self::cols(count($it)),'row')]:[];
    case 'gallery':$im=[];foreach((array)($p['images']??[]) as $x){$e=self::image($x,'agx-img agx-gallery-img');if($e)$im[]=$e;}if(!$im)return [];$n=self::cols($p['cols']??count($im),4);if(count($im)===1)$n=1;return [self::c($im,'agx-grid agx-gallery agx-cols-'.$n,'row')];
@@ -2078,6 +2082,7 @@ final class AGST_Spec {
   $data=[];$i=0;
   foreach((array)$spec as $s){
    $layout=$s['layout']??'stack';
+   if($layout==='band'){$bm=(array)($s['media']??[]);unset($bm['caption']);$img=self::image($bm,'agx-img agx-band-img');if(!$img)continue;$cap=self::head('p',$s['title']??'','agx-band-cap');$data[]=self::c(array_filter([$img,$cap]),'agx-s agx-band','column',false);continue;}
    $tone=$layout==='cta'?'accent':(($s['tone']??'')?:($i%2===0?'dark':'light'));$i++;
    $head=array_values(array_filter([self::head('p',$s['eyebrow']??'','agx-kicker'),self::head('h2',$s['title']??'','agx-h2'),self::text(self::para($s['text']??''),'agx-text agx-intro')]));
    $parts=[];foreach((array)($s['parts']??[]) as $p)foreach(self::part($p) as $e)if($e)$parts[]=$e;
@@ -2346,3 +2351,145 @@ add_action('wp_ajax_agst_meta_get',function(){if(!current_user_can('manage_wooco
 add_action('wp_ajax_agst_media_reject',function(){if(!current_user_can('manage_woocommerce')||!wp_verify_nonce((string)($_POST['nonce']??''),'wp_rest'))wp_send_json_error('forbidden',403);$out=[];foreach(array_map('intval',explode(',',(string)($_POST['ids']??''))) as $id){$src=get_post_meta($id,'_agst_clean_of',true);if($src===''){$out[$id]='not a clean copy';continue;}update_post_meta($id,'_agst_clean_rejected',$src);delete_post_meta($id,'_agst_clean_of');
  foreach(get_posts(['post_type'=>'product','post_status'=>'any','numberposts'=>-1,'fields'=>'ids','meta_key'=>'_agst_media']) as $pid){$m=get_post_meta($pid,'_agst_media',true);if(is_array($m)&&in_array($id,array_map('intval',(array)$m['images']),true)){$m['images']=array_values(array_diff(array_map('intval',$m['images']),[$id]));update_post_meta($pid,'_agst_media',$m);$out[$id][]=$pid;}}}
  wp_send_json_success($out);});
+
+// ===== Product page v2 (2026-10): light, photo-led layout =====
+// Enabled per product (meta _agst_tpl_v2=1), for all (option agst_v2='all'), or previewed on staging with ?v2=1 (?v1=1 forces v1).
+// Image classes (R real photo, C product render/cut-out, D drawing, A AI scene, X junk) come from option agst_img_classes
+// (path => class); real project photos come from _agst_media. Content and editing stay in Elementor + the media box.
+final class AGST_V2 {
+ static function on($pid){
+  if(isset($_GET['v1']))return false;
+  if(isset($_GET['v2'])&&parse_url(home_url(),PHP_URL_HOST)==='globusgates.online')return true;
+  return get_option('agst_v2','')==='all'||(bool)get_post_meta($pid,'_agst_tpl_v2',true);
+ }
+ static function classes(){static $c=null;if($c===null){$c=json_decode((string)get_option('agst_img_classes','{}'),true);if(!is_array($c))$c=[];}return $c;}
+ static function key($u){$p=(string)parse_url(html_entity_decode((string)$u,ENT_QUOTES|ENT_HTML5,'UTF-8'),PHP_URL_PATH);return preg_replace('~-\d+x\d+(?=\.\w+$)~','',$p);}
+ static function cls($u){$c=self::classes();return $c[self::key($u)]??'';}
+ static function is_kit($p){$n=strtolower($p->get_name());return (bool)preg_match('~kit|gate|fence|pergola|patio|roof system|cladding|clad1|louver~',$n)&&!preg_match('~hinge|bracket|screw|spacer|cap\b|plug|stopper|latch|bolt|anchor|wheel|track|roller|catcher|post kit|slat box|frame kit only~',$n);}
+ /** Hero media: real project photos first for kits, product images first for parts; AI scenes only as a last resort. */
+ static function hero($p,$model){
+  $real=[];if(class_exists('AGST_Media'))foreach(AGST_Media::images($p->get_id()) as $id)$real[]=['url'=>wp_get_attachment_url($id),'thumb'=>wp_get_attachment_image_url($id,'medium_large')?:wp_get_attachment_url($id),'alt'=>(string)get_post_meta($id,'_wp_attachment_image_alt',true),'tag'=>'Real project'];
+  $prod=[];$ai=[];foreach($model['hero'] as $im){$c=self::cls($im['url']);$it=['url'=>$im['url'],'thumb'=>$im['url'],'alt'=>$im['alt']??'','tag'=>$c==='R'?'Real project':''];if($c==='X')continue;if($c==='A')$ai[]=$it;elseif($c==='R')array_unshift($real,$it);else $prod[]=$it;}
+  $list=self::is_kit($p)?array_merge(array_slice($real,0,10),$prod):array_merge($prod,array_slice($real,0,8));
+  if(count($list)<2)$list=array_merge($list,array_slice($ai,0,3));
+  $seen=[];$out=[];foreach($list as $it){$k=self::key($it['url']);if(isset($seen[$k])||!$it['url'])continue;$seen[$k]=1;$out[]=$it;}return array_slice($out,0,14);
+ }
+ static function spec_pairs($specs){$o=[];foreach((array)$specs as $s){$s=trim(wp_strip_all_tags((string)$s));if($s==='')continue;if(preg_match('~^([^:]{2,40}):\s*(.+)$~u',$s,$m))$o[]=[trim($m[1]),trim($m[2])];else $o[]=['',$s];}return $o;}
+ static function highlights($pairs){$want=['~material~i'=>'material','~finish|coat~i'=>'finish','~color|colour~i'=>'color','~size|dimension|length|kit size|height|width~i'=>'size','~gap|slat~i'=>'slat','~install|usage|use|fits~i'=>'use','~roof|louver|motor~i'=>'roof'];$out=[];$used=[];
+  foreach($want as $re=>$icon){foreach($pairs as $i=>$pr){if(isset($used[$i])||$pr[0]==='')continue;if(preg_match($re,$pr[0])&&mb_strlen($pr[1])<=60){$out[]=[$icon,$pr[0],$pr[1]];$used[$i]=1;break;}}if(count($out)>=4)break;}return $out;}
+ static function icon($n){$p=['material'=>'<path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4"/><path d="M4 17l8 4 8-4"/>','finish'=>'<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16"/>','color'=>'<path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-2 0-1.4-1.2-1.6-1.2-3 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/>','size'=>'<path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/>','slat'=>'<path d="M4 5h16M4 10h16M4 15h16M4 20h16"/>','use'=>'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>','roof'=>'<path d="M3 11l9-6 9 6"/><path d="M5 10v9h14v-9"/>','truck'=>'<path d="M3 6h11v10H3zM14 9h4l3 3v4h-7"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>','factory'=>'<path d="M3 21V10l6 4V10l6 4V6h6v15z"/>','chat'=>'<path d="M4 5h16v11H8l-4 4z"/>','check'=>'<path d="M5 12l4 4 10-10"/>','play'=>'<path d="M8 5l11 7-11 7z"/>'];
+  return '<svg class="agv-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'.($p[$n]??$p['check']).'</svg>';}
+ static function yt($u){return preg_match('~(?:youtu\.be/|youtube(?:-nocookie)?\.com/(?:embed/|shorts/|watch\?v=))([a-zA-Z0-9_-]{11})~',(string)$u,$m)?$m[1]:'';}
+ static function render($model){
+  extract($model);$pid=$p->get_id();$title=$r['title'];$price=$p->get_price_html();$hero=self::hero($p,$model);$pairs=self::spec_pairs($r['specs']);$hl=self::highlights($pairs);
+  $el=class_exists('AGST_ElBuild')?AGST_ElBuild::show($pid):null;$has_el=$el!==null&&(class_exists('AGST_ElBuild')&&AGST_ElBuild::preview($pid)||trim(wp_strip_all_tags((string)$el,true))!==''||stripos((string)$el,'<img')!==false);
+  $media=class_exists('AGST_Media')?AGST_Media::get($pid):['title'=>'','intro'=>'','videos'=>[]];$real_ids=class_exists('AGST_Media')?AGST_Media::images($pid):[];$real_ids=array_values(array_filter($real_ids,function($id)use($el){$u=wp_get_attachment_url($id);return !$u||strpos((string)$el,pathinfo($u,PATHINFO_FILENAME))===false;}));
+  // videos: product's own first, then project videos; skip any already inside the body
+  $vids=[];foreach($videos as $v){$y=self::yt($v['url']);$k=$y?:$v['url'];if($y&&strpos((string)$el,$y)!==false)continue;$vids[$k]=['yt'=>$y,'url'=>$v['url'],'title'=>'Product video'];}
+  foreach((array)$media['videos'] as $v){if(empty($v['id'])||strpos((string)$el,$v['id'])!==false)continue;$vids[$v['id']]=['yt'=>$v['id'],'url'=>'','title'=>$v['title']?:'Aluglobus video'];}$vids=array_values($vids);
+  // supporting images: real ones join the projects grid, renders/drawings go to the views panel, AI scenes are dropped
+  $views=[];$extra_real=[];foreach($supporting as $im){$c=self::cls($im['url']);if($c==='R')$extra_real[]=$im;elseif($c==='C'||$c==='D'||($c===''&&!$real_ids))$views[]=$im;}
+  $soon=class_exists('AGST_ShopFront')?AGST_ShopFront::soon($pid):'';$contact=get_page_by_path('contact-us');$quote=home_url('/online-quote/');
+  $close=$real_ids?wp_get_attachment_image_url(end($real_ids),'large'):'';if(!$close)foreach($hero as $h)if($h['tag']){$close=$h['url'];break;}
+  $nav=[];if($has_el)$nav['agv-overview']='Overview';if($real_ids||$extra_real)$nav['agv-projects']='Projects';if($vids)$nav['agv-videos']='Videos';$nav['agv-specs']='Specifications';if($r['faq']&&stripos((string)$el,'elementor-toggle')===false)$nav['agv-faq']='FAQ';
+ ?>
+ <main class="agv" id="agx-product" data-product-id="<?php echo (int)$pid;?>">
+ <nav class="agv-crumbs" aria-label="Breadcrumb"><a href="<?php echo esc_url(AGST_Catalog::local_url(wc_get_page_permalink('shop')));?>">Shop</a><?php $pc=(int)get_post_meta($pid,'_yoast_wpseo_primary_product_cat',true);$t=$pc?get_term($pc,'product_cat'):null;if($t&&!is_wp_error($t)):?><span aria-hidden="true">›</span><a href="<?php echo esc_url(get_term_link($t));?>"><?php echo esc_html($t->name);?></a><?php endif;?><span aria-hidden="true">›</span><span aria-current="page"><?php echo esc_html($title);?></span></nav>
+ <div class="agx-notices"><?php if(function_exists('wc_print_notices'))wc_print_notices();?></div>
+ <section class="agv-hero" id="agx-configure">
+  <div class="agv-media" data-lb-group="hero">
+   <div class="agv-stage" tabindex="0" aria-roledescription="carousel" aria-label="Product photos">
+    <?php foreach($hero as $i=>$h):?><figure class="agv-slide"><button type="button" class="agv-zoom" data-full="<?php echo esc_url($h['url']);?>" data-caption="<?php echo esc_attr($h['alt']?:$title);?>" aria-label="Enlarge photo <?php echo $i+1;?> of <?php echo count($hero);?>"><img src="<?php echo esc_url($i<2?$h['url']:$h['thumb']);?>" alt="<?php echo esc_attr($h['alt']?:$title);?>" <?php echo $i===0?'fetchpriority="high"':'loading="lazy"';?> decoding="async"></button><?php if($h['tag']):?><span class="agv-tag"><?php echo esc_html($h['tag']);?></span><?php endif;?></figure><?php endforeach;?>
+    <?php if(!$hero):?><div class="agv-pending">Product image coming soon</div><?php endif;?>
+   </div>
+   <?php if(count($hero)>1):?><button type="button" class="agv-arrow agv-prev" aria-label="Previous photo">‹</button><button type="button" class="agv-arrow agv-next" aria-label="Next photo">›</button><span class="agv-count"><b>1</b> / <?php echo count($hero);?></span>
+   <div class="agv-thumbs" aria-label="Choose photo"><?php foreach($hero as $i=>$h):?><button type="button" aria-label="Show photo <?php echo $i+1;?>" aria-current="<?php echo $i===0?'true':'false';?>"><img src="<?php echo esc_url($h['thumb']);?>" alt="" loading="lazy" decoding="async"></button><?php endforeach;?></div><?php endif;?>
+  </div>
+  <div class="agv-buy" id="agv-buy">
+   <p class="agv-kicker"><?php echo esc_html($r['family']);?></p>
+   <h1 class="agv-title"><?php echo esc_html($title);?></h1>
+   <?php if(!empty($r['lead'])):?><p class="agv-lead"><?php echo esc_html($r['lead']);?></p><?php endif;?>
+   <?php if($hl):?><ul class="agv-chips"><?php foreach(array_slice($hl,0,3) as $h):?><li><?php echo esc_html($h[2]);?></li><?php endforeach;?></ul><?php endif;?>
+   <div class="agv-price agx-price" aria-live="polite"><?php echo $price?:'Price on request';?></div>
+   <?php if($soon):?><p class="agv-soon"><b>Coming soon</b> · <?php echo esc_html($soon==='all'?'please confirm availability before ordering.':$soon.' coming soon.');?></p><?php endif;?>
+   <div class="agv-cart agx-cart"><?php global $product;if($product&&!$product->is_purchasable()){echo '<a class="agv-btn agv-btn--primary" href="'.esc_url($quote).'">Request a quote</a>';}else{woocommerce_template_single_add_to_cart();}?></div>
+   <div class="agv-buy-links"><a class="agv-btn agv-btn--ghost" href="<?php echo esc_url($quote);?>">Request a project quote</a><?php if($contact):?><a class="agv-link" href="<?php echo esc_url(get_permalink($contact));?>">Talk to a specialist →</a><?php endif;?></div>
+   <ul class="agv-trust"><li><?php echo self::icon('factory');?><span><b>Factory direct</b> from Aluglobus Aluminum Systems</span></li><li><?php echo self::icon('truck');?><span><b>Nationwide shipping</b> across the U.S.</span></li><li><?php echo self::icon('chat');?><span><b>Project support</b> for homeowners and trade pros</span></li></ul>
+  </div>
+ </section>
+ <?php if(count($hl)>=3):?><section class="agv-highlights" aria-label="Key facts"><?php foreach($hl as $h):?><div class="agv-hl"><?php echo self::icon($h[0]);?><span class="agv-hl-label"><?php echo esc_html($h[1]);?></span><span class="agv-hl-value"><?php echo esc_html($h[2]);?></span></div><?php endforeach;?></section><?php endif;?>
+ <nav class="agv-nav" aria-label="Page sections"><div class="agv-nav-in"><?php foreach($nav as $id=>$l):?><a href="#<?php echo esc_attr($id);?>"><?php echo esc_html($l);?></a><?php endforeach;?><a class="agv-nav-cta" href="#agv-buy"><?php echo $price?wp_strip_all_tags($price):'Get a quote';?> · Buy</a></div></nav>
+ <?php if($has_el):?><div class="agv-body agx-el" id="agv-overview"><?php echo $el;?></div><?php endif;?>
+ <?php if($real_ids||$extra_real):$n=count($real_ids)+count($extra_real);?>
+ <section class="agv-sec agv-projects" id="agv-projects"><div class="agv-wrap"><div class="agv-head"><p class="agv-kicker">Real projects</p><h2><?php echo esc_html($media['title']?:'Installed by our customers');?></h2><p><?php echo esc_html($media['intro']?:'Completed installations by Aluglobus Aluminum Systems. Sizes, layouts and accessories vary by project.');?></p></div>
+  <div class="agv-pgrid" data-lb-group="projects"><?php $i=0;foreach($real_ids as $id){$alt=(string)get_post_meta($id,'_wp_attachment_image_alt',true);echo '<figure class="agv-pi'.($i>=7?' is-more':'').'"><button type="button" class="agv-zoom" data-full="'.esc_url(wp_get_attachment_url($id)).'" data-caption="'.esc_attr(wp_get_attachment_caption($id)?:$alt).'" aria-label="Enlarge project photo '.($i+1).'">'.AGST_Media::img($id,$alt,$i===0?'(max-width:720px) 100vw, 50vw':'(max-width:720px) 50vw, 25vw',false).'</button></figure>';$i++;}
+   foreach($extra_real as $im){echo '<figure class="agv-pi'.($i>=7?' is-more':'').'"><button type="button" class="agv-zoom" data-full="'.esc_url($im['url']).'" data-caption="'.esc_attr($im['alt']?:$title).'"><img src="'.esc_url($im['url']).'" alt="'.esc_attr($im['alt']?:$title).'" loading="lazy" decoding="async"></button></figure>';$i++;}?></div>
+  <?php if($n>7):?><div class="agv-center"><button type="button" class="agv-btn agv-btn--ghost agv-more" aria-expanded="false" data-more="Show all <?php echo $n;?> photos" data-less="Show fewer photos">Show all <?php echo $n;?> photos</button></div><?php endif;?></div></section>
+ <?php endif;?>
+ <?php if($vids):$v0=$vids[0];?>
+ <section class="agv-sec agv-videos" id="agv-videos"><div class="agv-wrap"><div class="agv-head"><p class="agv-kicker">Watch</p><h2>See it built and installed</h2><p>Installation, product and factory videos from Aluglobus Aluminum Systems.</p></div>
+  <div class="agv-vfeature"><?php if($v0['yt']):?><button type="button" class="agv-vid agv-vid--big" data-yt="<?php echo esc_attr($v0['yt']);?>" data-caption="<?php echo esc_attr($v0['title']);?>"><img src="https://i.ytimg.com/vi/<?php echo esc_attr($v0['yt']);?>/maxresdefault.jpg" onerror="this.onerror=null;this.src='https://i.ytimg.com/vi/<?php echo esc_attr($v0['yt']);?>/hqdefault.jpg'" alt="" loading="lazy"><span class="agv-play"><?php echo self::icon('play');?></span><span class="agv-vtitle"><?php echo esc_html($v0['title']);?></span></button><?php else:?><video controls playsinline preload="none" src="<?php echo esc_url($v0['url']);?>"></video><?php endif;?>
+  <?php if(count($vids)>1):?><div class="agv-vlist"><?php foreach(array_slice($vids,1,6) as $v):if($v['yt']):?><button type="button" class="agv-vid" data-yt="<?php echo esc_attr($v['yt']);?>" data-caption="<?php echo esc_attr($v['title']);?>"><span class="agv-vthumb"><img src="https://i.ytimg.com/vi/<?php echo esc_attr($v['yt']);?>/mqdefault.jpg" alt="" loading="lazy"><span class="agv-play agv-play--sm"><?php echo self::icon('play');?></span></span><span class="agv-vtitle"><?php echo esc_html($v['title']);?></span></button><?php else:?><video controls playsinline preload="none" src="<?php echo esc_url($v['url']);?>"></video><?php endif;endforeach;?></div><?php endif;?></div></div></section>
+ <?php endif;?>
+ <section class="agv-sec agv-specs" id="agv-specs"><div class="agv-wrap agv-specs-grid">
+  <div><p class="agv-kicker">Specifications</p><h2>Technical details</h2><p class="agv-muted">Check sizes, material and configuration against your project before ordering.</p>
+   <?php if(!empty($r['inclusions'])):?><div class="agv-card agv-incl"><h3>What's included</h3><ul class="agv-checks"><?php foreach($r['inclusions'] as $s):?><li><?php echo esc_html(preg_replace('/^\d+[.)]\s*/','',$s));?></li><?php endforeach;?></ul></div><?php endif;?>
+  </div>
+  <div><dl class="agv-dl"><?php foreach($pairs as $pr):?><?php if($pr[0]===''):?><div class="agv-dl-note"><dd><?php echo esc_html($pr[1]);?></dd></div><?php else:?><div><dt><?php echo esc_html($pr[0]);?></dt><dd><?php echo esc_html($pr[1]);?></dd></div><?php endif;?><?php endforeach;?></dl>
+   <?php if($views):?><details class="agv-views"><summary><span>Product views &amp; drawings</span><small><?php echo count($views);?> images</small></summary><div class="agv-vgrid" data-lb-group="views"><?php foreach($views as $im):?><button type="button" class="agv-zoom" data-full="<?php echo esc_url($im['url']);?>" data-caption="<?php echo esc_attr($im['alt']?:$title);?>"><img src="<?php echo esc_url($im['url']);?>" alt="<?php echo esc_attr($im['alt']?:$title);?>" loading="lazy" decoding="async"></button><?php endforeach;?></div></details><?php endif;?>
+  </div></div></section>
+ <?php if(class_exists('AGST_Related'))echo str_replace(['agx-section agx-related','agx-section-heading'],['agv-sec agv-related','agv-head'],AGST_Related::section($pid));?>
+ <?php $body_faq=stripos((string)$el,'elementor-toggle')!==false;if($r['faq']&&!$body_faq):?><section class="agv-sec agv-faq" id="agv-faq"><div class="agv-wrap agv-faq-grid"><div><p class="agv-kicker">FAQ</p><h2>Questions, answered</h2><div class="agv-card agv-help"><?php echo self::icon('chat');?><h3>Still deciding?</h3><p>Send your measurements and photos. Our team will help you choose the right system and parts.</p><a class="agv-btn agv-btn--primary" href="<?php echo esc_url($quote);?>">Request a quote</a><?php if($contact):?><a class="agv-link" href="<?php echo esc_url(get_permalink($contact));?>">Contact us →</a><?php endif;?></div></div>
+  <div class="agv-acc"><?php foreach($r['faq'] as $qa):?><details><summary><?php echo esc_html($qa[0]);?></summary><div><?php echo wpautop(esc_html($qa[1]));?></div></details><?php endforeach;?></div></div></section><?php endif;?>
+ <section class="agv-close"<?php if($close):?> style="--agv-close:url('<?php echo esc_url($close);?>')"<?php endif;?>><div class="agv-wrap"><p class="agv-kicker">Ready when you are</p><h2>Ready to start your project?</h2><p>Order online or send your project details for a factory-direct quote.</p><div class="agv-close-btns"><a class="agv-btn agv-btn--primary" href="#agv-buy">Choose options</a><a class="agv-btn agv-btn--light" href="<?php echo esc_url($quote);?>">Request a quote</a></div></div></section>
+ <div class="agv-bar" aria-hidden="true"><?php if($hero):?><img src="<?php echo esc_url($hero[0]['thumb']);?>" alt=""><?php endif;?><div><b><?php echo esc_html($title);?></b><span><?php echo $price?wp_strip_all_tags($price):'Price on request';?></span></div><a class="agv-btn agv-btn--primary" href="#agv-buy" tabindex="-1"><?php echo $p->is_purchasable()?'Buy now':'Get a quote';?></a></div>
+ </main>
+ <?php }
+}
+// Admin: save whitelisted presentation options (image classes, v2 switch).
+add_action('wp_ajax_agst_option_save',function(){if(!current_user_can('manage_woocommerce')||!wp_verify_nonce((string)($_POST['nonce']??''),'wp_rest'))wp_send_json_error('forbidden',403);$k=(string)($_POST['key']??'');if(!in_array($k,['agst_img_classes','agst_v2'],true))wp_send_json_error('key');$v=wp_unslash((string)($_POST['value']??''));if($k==='agst_img_classes'&&!is_array(json_decode($v,true)))wp_send_json_error('json');update_option($k,$v,false);wp_send_json_success([$k=>strlen($v)]);});
+
+// ===== Body v2: real photos through the page, AI images out, drawings in one panel =====
+// Applied to the page spec right before the Elementor build when the product uses v2 (or option agst_v2='all').
+// Real photos = the product's verified project photos (_agst_media) plus body images classed R.
+final class AGST_V2Build {
+ static function enabled($pid){return get_option('agst_v2','')==='all'||(bool)get_post_meta($pid,'_agst_tpl_v2',true);}
+ static function c($src){return class_exists('AGST_V2')?AGST_V2::cls($src):'';}
+ static function textish($sec){foreach((array)($sec['parts']??[]) as $p){if(!in_array($p['type']??'',['text','checklist','chips','note','buttons','stats'],true))return false;}return true;}
+ static function transform($spec,$pid){
+  if(!is_array($spec)||!$spec)return $spec;
+  // pool of real photos not already in the body
+  $pool=[];$used=[];
+  foreach($spec as $s){if(!empty($s['media']['src']))$used[AGST_V2::key($s['media']['src'])]=1;foreach((array)($s['parts']??[]) as $p)foreach((array)($p['images']??[]) as $im)if(!empty($im['src']))$used[AGST_V2::key($im['src'])]=1;}
+  if(class_exists('AGST_Media'))foreach(AGST_Media::images($pid) as $id){$u=wp_get_attachment_url($id);if(!$u||isset($used[AGST_V2::key($u)]))continue;$pool[]=['src'=>$u,'id'=>$id,'alt'=>(string)get_post_meta($id,'_wp_attachment_image_alt',true),'caption'=>wp_get_attachment_caption($id)];}
+  $take=function()use(&$pool){return array_shift($pool);};
+  $views=[];$out=[];
+  foreach($spec as $s){
+   $layout=$s['layout']??'stack';
+   $label=strtolower(($s['eyebrow']??'').' '.($s['title']??''));
+   if(preg_match('~drawing|diagram|technical render|reference graphic|exploded|cad\b~',$label)){if(!empty($s['media']['src']))$views[]=$s['media'];foreach((array)($s['parts']??[]) as $p)foreach((array)($p['images']??[]) as $im)$views[]=$im;continue;}
+   if($layout==='split'&&!empty($s['media']['src'])){$k=self::c($s['media']['src']);
+    if($k==='A'||$k==='D'||$k==='X'){if($k==='D')$views[]=$s['media'];$r=$take();if($r){$s['media']=$r;}else{$s['layout']='stack';unset($s['media']);}}}
+   $parts=[];foreach((array)($s['parts']??[]) as $p){$t=$p['type']??'';
+    if($t==='gallery'){$keep=[];foreach((array)$p['images'] as $im){$k=self::c($im['src']??'');if($k==='A'||$k==='X')continue;if($k==='D'||($k==='C'&&count((array)$p['images'])>2)){$views[]=$im;continue;}$keep[]=$im;}if(!$keep)continue;$p['images']=$keep;if(count($keep)<($p['cols']??3))$p['cols']=max(1,min(count($keep),$p['cols']??3));}
+    if(in_array($t,['cards','packages'],true)){foreach($p['items'] as &$it){if(!empty($it['image']['src'])&&in_array(self::c($it['image']['src']),['A','X','D'],true))unset($it['image']);}unset($it);}
+    $parts[]=$p;}
+   $s['parts']=$parts;
+   if(empty($s['title'])&&empty($s['text'])&&!$parts&&($s['layout']??'stack')!=='split')continue;
+   $out[]=$s;
+  }
+  // text-only sections become photo splits (alternating sides), and photo bands break up long pages
+  $n=0;$res=[];$band_at=[1=>true,5=>true,9=>true];$i=0;
+  foreach($out as $s){
+   if(($s['layout']??'stack')==='stack'&&self::textish($s)&&($s['title']??'')!==''&&$pool&&count($pool)>2){$r=$take();$s['layout']='split';$s['media']=$r;$s['reverse']=($n++%2)===1;}
+   $res[]=$s;$i++;
+   if(isset($band_at[$i])&&count($pool)>=3&&($s['layout']??'')!=='cta'){$r=$take();$res[]=['layout'=>'band','media'=>$r,'eyebrow'=>'Real project','title'=>(string)($r['caption']?:''),'parts'=>[]];}
+  }
+  if($views){$seen=[];$imgs=[];foreach($views as $v){$k=AGST_V2::key($v['src']);if(isset($seen[$k]))continue;$seen[$k]=1;$imgs[]=$v;}
+   $cta=null;if($res&&($res[count($res)-1]['layout']??'')==='cta')$cta=array_pop($res);
+   $res[]=['layout'=>'stack','eyebrow'=>'Reference','title'=>'Product views & drawings','parts'=>[['type'=>'drawings','images'=>$imgs]]];if($cta)$res[]=$cta;}
+  return $res;
+ }
+}
+// Admin: switch products to the v2 page (meta _agst_tpl_v2), staging pilot.
+add_action('wp_ajax_agst_tpl_set',function(){if(!current_user_can('manage_woocommerce')||!wp_verify_nonce((string)($_POST['nonce']??''),'wp_rest'))wp_send_json_error('forbidden',403);$on=!empty($_POST['on']);$o=[];foreach(array_map('intval',explode(',',(string)($_POST['ids']??''))) as $id){if(!$id||get_post_type($id)!=='product')continue;if($on)update_post_meta($id,'_agst_tpl_v2',1);else delete_post_meta($id,'_agst_tpl_v2');$o[]=$id;}wp_send_json_success($o);});
