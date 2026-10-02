@@ -68,9 +68,10 @@ final class AGST_Storefront {
   <div class="agx-support"><strong>Planning a larger material package?</strong><span>Coordinate the product, finish and related components before ordering.</span></div></div>
  </section>
  <div class="agx-trust"><div><b>Factory direct</b><span>Aluglobus supply</span></div><div><b>Nationwide shipping</b><span>Material supply across the U.S.</span></div><div><b>Project support</b><span>Homeowners + trade professionals</span></div></div>
- <nav class="agx-nav" aria-label="Product sections"><a href="#agx-overview">Overview</a><?php if($agx_pkg):?><a href="#agx-package">Package details</a><?php endif;?><a href="#agx-details">Specifications</a><a href="#agx-projects">Images</a><?php if($videos):?><a href="#agx-films">Videos</a><?php endif;?><?php if($r['faq']):?><a href="#agx-faq">Questions</a><?php endif;?><a href="#agx-configure">Choose options ↑</a></nav>
+ <nav class="agx-nav" aria-label="Product sections"><a href="#agx-overview">Overview</a><?php if(class_exists('AGST_Media'))echo AGST_Media::nav($p->get_id(),class_exists('AGST_ElBuild')?(string)get_post_meta($p->get_id(),'_elementor_data',true):'');?><?php if($agx_pkg):?><a href="#agx-package">Package details</a><?php endif;?><a href="#agx-details">Specifications</a><a href="#agx-projects">Images</a><?php if($videos):?><a href="#agx-films">Videos</a><?php endif;?><?php if($r['faq']):?><a href="#agx-faq">Questions</a><?php endif;?><a href="#agx-configure">Choose options ↑</a></nav>
  <?php $agst_el=class_exists('AGST_ElBuild')?AGST_ElBuild::show($p->get_id()):null;$agst_has=$agst_el!==null&&(AGST_ElBuild::preview($p->get_id())||trim(wp_strip_all_tags($agst_el,true))!==''||stripos($agst_el,'<img')!==false||stripos($agst_el,'elementor-widget-video')!==false);?><?php if($agst_has):?><div class="agx-content agx-el" id="agx-overview"><?php echo $agst_el;?></div><?php elseif($content&&$agst_el===null):?><div class="agx-content" id="agx-overview"><?php echo AGST_Blocks::sections($content);?></div><?php endif;?>
  <?php if(!$agst_has&&($agst_el!==null||!$content)):?> <section class="agx-story agx-section" id="agx-overview"><div class="agx-story-copy"><p class="agx-eyebrow"><?php echo esc_html($r['family']);?></p><h2><?php echo esc_html($r['headline']);?></h2><p><?php echo esc_html($r['story']);?></p><a class="agx-text-link" href="<?php echo $agx_pkg?'#agx-package':'#agx-details';?>"><?php echo $agx_pkg?'Explore the package':'See the specifications';?> <span>↗</span></a></div><?php if($images):$im=$images[min(1,count($images)-1)];?><div class="agx-story-image"><button class="agx-zoom" data-full="<?php echo esc_url($im['url']);?>" aria-label="Enlarge product detail"><?php echo self::picture($im,$title);?></button><span class="agx-image-label">01 / Product detail</span></div><?php endif;?></section><?php endif;?>
+ <?php if(class_exists('AGST_Media'))echo AGST_Media::section($p->get_id(),(string)$agst_el);?>
  <?php if($videos):?><section class="agx-section agx-film-section" id="agx-films"><div class="agx-section-heading"><div><p class="agx-eyebrow">See the system in action</p><h2>Watch the details come together.</h2></div><p>Product demonstrations and installation context. Check the listed package for the components supplied.</p></div><div class="agx-films"><?php foreach($videos as $video)echo self::video($video,$title);?></div></section><?php endif;?>
  <?php if($agx_pkg):?><section class="agx-section agx-light" id="agx-package"><div class="agx-section-heading"><div><p class="agx-eyebrow">Know your material package</p><h2><?php echo $r['inclusions']?'Inside the package.':'Plan the right combination.';?></h2></div><p>Separate the supplied components from the additional parts your installation requires.</p></div><div class="agx-package-grid"><div class="agx-package-card"><span class="agx-label">01 / <?php echo $r['inclusions']?'Listed inclusions':'Product configuration';?></span><h3><?php echo $r['inclusions']?'What comes with this listing':'Review before you order';?></h3><ul class="agx-checklist"><?php foreach(($r['inclusions']?:$r['specs']?:[$r['title']]) as $s):?><li><?php echo esc_html(preg_replace('/^\d+[.)]\s*/','',$s));?></li><?php endforeach;?></ul></div><div class="agx-package-card agx-package-alt"><span class="agx-label">02 / Complete the installation</span><h3><?php echo $r['post_options']?'Choose your mounting arrangement':'Check the adjoining components';?></h3><?php if($r['post_options']):?><ul class="agx-checklist"><?php foreach($r['post_options'] as $s):?><li><?php echo esc_html(preg_replace('/^\d+[.)]\s*/','',$s));?></li><?php endforeach;?></ul><p>Post options are separate choices. Confirm the selected mounting package and inclusions in your quotation.</p><?php else:?><p><?php echo esc_html($r['intro']??$r['story']);?></p><p>Photos and videos may show accessories or other products that are not included in this listing.</p><?php endif;?></div></div></section><?php endif;?>
  <section class="agx-section agx-spec-section" id="agx-details"><div><p class="agx-eyebrow">The technical details</p><h2>Specify with confidence.</h2><p>Check the dimensions, material and configuration against your project requirements.</p></div><div class="agx-specs"><?php foreach(($r['specs']?:[$r['title']]) as $i=>$s):?><div><span><?php echo str_pad((string)($i+1),2,'0',STR_PAD_LEFT);?></span><p><?php echo esc_html($s);?></p></div><?php endforeach;?></div></section>
@@ -2175,3 +2176,134 @@ add_action('wp_enqueue_scripts',function(){if(AGST_Storefront::active())wp_add_i
 // Shortcode widgets (agx-shortcode) are skipped when their shortcode is not registered (e.g. the AR plugin is inactive on staging),
 // so visitors never see raw "[ar-display id=…]" text; the shortcode stays in the Elementor data and renders where the plugin is active.
 add_filter('elementor/frontend/widget/should_render',function($r,$w){if(!$r||!is_object($w)||!method_exists($w,'get_settings'))return $r;$st=$w->get_settings();if(strpos((string)($st['_css_classes']??''),'agx-shortcode')===false)return $r;$c=(string)($st['editor']??$st['shortcode']??'');if(preg_match('~\[([a-zA-Z0-9_-]+)~',$c,$m)&&!shortcode_exists($m[1]))return false;return $r;},10,2);
+
+// Media probe (admins, read-only): best watermark-free source for gallery attachments.
+// Image Watermark burns the mark into the files and keeps originals in uploads/iw-backup/<Y>/<m>/<name>.<ext>
+// (the stem matches the attachment file, the extension may differ after WebP conversion). WordPress also keeps
+// the pre-scaling original for "-scaled" uploads (metadata original_image).
+final class AGST_MediaSource {
+ static function clean($id){
+  $up=wp_upload_dir();$rel=(string)get_post_meta($id,'_wp_attached_file',true);if($rel==='')return null;
+  $dir=dirname($rel);$stem=pathinfo($rel,PATHINFO_FILENAME);$meta=wp_get_attachment_metadata($id);$c=[];
+  foreach([$stem,preg_replace('~-scaled$~','',$stem)] as $s)foreach(['png','jpg','jpeg','webp','PNG','JPG','JPEG'] as $e)$c[]=['iw-backup',$up['basedir'].'/iw-backup/'.$dir.'/'.$s.'.'.$e];
+  if(!empty($meta['original_image'])){$c[]=['iw-backup',$up['basedir'].'/iw-backup/'.$dir.'/'.$meta['original_image']];$c[]=['original',$up['basedir'].'/'.$dir.'/'.$meta['original_image']];}
+  foreach($c as $x){if(is_file($x[1])){$sz=@getimagesize($x[1]);return ['kind'=>$x[0],'path'=>substr($x[1],strlen($up['basedir'])+1),'w'=>$sz[0]??0,'h'=>$sz[1]??0,'bytes'=>filesize($x[1])];}}
+  return null;
+ }
+}
+add_action('wp_ajax_agst_media_probe',function(){
+ if(!current_user_can('manage_woocommerce')||!wp_verify_nonce((string)($_POST['nonce']??''),'wp_rest'))wp_send_json_error('forbidden',403);
+ $out=[];foreach(array_map('intval',explode(',',(string)($_POST['ids']??''))) as $id){if($id)$out[$id]=AGST_MediaSource::clean($id);}
+ wp_send_json_success($out);
+});
+
+// ===== Product media (round 5): real project photos + videos under the product body =====
+// Per product meta _agst_media = ['title'=>..,'intro'=>..,'images'=>[attachment ids],'videos'=>[['id'=>YouTube id,'title'=>..]]].
+// Photos come from the /gallery FooGallery. Gallery files carry a burned-in watermark, so product pages use a
+// clean copy generated from the untouched original (Image Watermark backup or WordPress pre-scaling original)
+// into uploads/agst-media/ as a normal media-library attachment (meta _agst_clean_of = gallery attachment).
+// The gallery itself is not changed. Editable per product in the "Project photos & videos" box.
+final class AGST_Media {
+ const META='_agst_media';
+ static function boot(){
+  add_action('add_meta_boxes_product',function(){add_meta_box('agst-media','Project photos & videos (below the product body)',[__CLASS__,'box'],'product','normal','high');});
+  add_action('save_post_product',[__CLASS__,'save'],10,1);
+  add_action('wp_ajax_agst_media_apply',[__CLASS__,'ajax_apply']);
+ }
+ static function get($pid){$m=get_post_meta($pid,self::META,true);if(!is_array($m))$m=[];return array_merge(['title'=>'','intro'=>'','images'=>[],'videos'=>[]],$m);}
+ static function yt($s){return preg_match('~(?:youtu\.be/|v=|embed/|shorts/|^)([A-Za-z0-9_-]{11})(?:$|[?&#/\s])~',trim((string)$s),$m)?$m[1]:'';}
+ static function images($pid){return array_values(array_filter(array_map('intval',(array)self::get($pid)['images']),function($id){return $id&&wp_attachment_is_image($id);}));}
+ /* ---------- clean copies ---------- */
+ static function clean_copy($src_id,$clean_rel,$alt='',$caption=''){
+  $src_id=(int)$src_id;
+  $have=get_posts(['post_type'=>'attachment','post_status'=>'inherit','meta_key'=>'_agst_clean_of','meta_value'=>$src_id,'fields'=>'ids','numberposts'=>1]);
+  if($have){$id=(int)$have[0];if($alt!=='')update_post_meta($id,'_wp_attachment_image_alt',$alt);return $id;}
+  $up=wp_upload_dir();$src=$up['basedir'].'/'.ltrim(str_replace('..','',(string)$clean_rel),'/');if(!is_file($src))return new WP_Error('nosrc','missing '.$clean_rel);
+  require_once ABSPATH.'wp-admin/includes/image.php';
+  $ed=wp_get_image_editor($src);if(is_wp_error($ed))return $ed;
+  if(method_exists($ed,'maybe_exif_rotate'))$ed->maybe_exif_rotate();
+  $ed->resize(2048,2048,false);if(method_exists($ed,'set_quality'))$ed->set_quality(82);
+  $att=(string)get_post_meta($src_id,'_wp_attached_file',true);$sub='agst-media/'.trim(dirname($att),'./');$dir=$up['basedir'].'/'.$sub;wp_mkdir_p($dir);
+  $mime=$ed->supports_mime_type('image/webp')?'image/webp':'image/jpeg';
+  $name=wp_unique_filename($dir,sanitize_file_name(preg_replace('~-scaled$~','',pathinfo($att,PATHINFO_FILENAME))).($mime==='image/webp'?'.webp':'.jpg'));
+  $saved=$ed->save($dir.'/'.$name,$mime);if(is_wp_error($saved))return $saved;
+  $title=get_the_title($src_id);
+  $id=wp_insert_attachment(['post_mime_type'=>$saved['mime-type'],'post_title'=>$title!==''?$title:$name,'post_excerpt'=>$caption,'post_content'=>'','post_status'=>'inherit'],$saved['path']);
+  if(is_wp_error($id)||!$id)return new WP_Error('insert','attachment insert failed');
+  // Only the sizes the product page uses; skips the theme's many crops for these copies.
+  $keep=function($s){return array_intersect_key($s,array_flip(['thumbnail','medium','medium_large','large']));};
+  add_filter('intermediate_image_sizes_advanced',$keep,99);
+  // Never re-watermark the clean copy (Image Watermark hooks metadata generation when it is active, e.g. on live).
+  $iw=[];global $wp_filter;if(isset($wp_filter['wp_generate_attachment_metadata']))foreach($wp_filter['wp_generate_attachment_metadata']->callbacks as $prio=>$cbs)foreach($cbs as $k=>$cb){if(is_array($cb['function'])&&is_object($cb['function'][0])&&stripos(get_class($cb['function'][0]),'watermark')!==false){$iw[]=[$prio,$cb['function']];remove_filter('wp_generate_attachment_metadata',$cb['function'],$prio);}}
+  wp_update_attachment_metadata($id,wp_generate_attachment_metadata($id,$saved['path']));
+  foreach($iw as $x)add_filter('wp_generate_attachment_metadata',$x[1],$x[0],2);
+  remove_filter('intermediate_image_sizes_advanced',$keep,99);
+  update_post_meta($id,'_wp_attachment_image_alt',$alt);update_post_meta($id,'_agst_clean_of',$src_id);update_post_meta($id,'_agst_clean_src',$clean_rel);
+  return $id;
+ }
+ /** Resolve a gallery attachment on this site by its upload path (IDs differ between sites). */
+ static function by_path($rel){global $wpdb;$id=(int)$wpdb->get_var($wpdb->prepare("SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key='_wp_attached_file' AND meta_value=%s LIMIT 1",$rel));return $id;}
+ /** AJAX: payload {product_id:{title,intro,images:[{file,clean,alt,caption}],videos:[{id,title}]}} -> clean copies + meta. */
+ static function ajax_apply(){
+  if(!current_user_can('manage_woocommerce')||!wp_verify_nonce((string)($_POST['nonce']??''),'wp_rest'))wp_send_json_error('forbidden',403);
+  @set_time_limit(300);$data=json_decode(wp_unslash((string)($_POST['payload']??'')),true);if(!is_array($data))wp_send_json_error('bad payload');
+  $out=[];
+  foreach($data as $key=>$d){
+   $pid=(int)$key;if(!$pid&&!empty($d['slug'])){$p=get_page_by_path((string)$d['slug'],OBJECT,'product');$pid=$p?$p->ID:0;}
+   if(!$pid||get_post_type($pid)!=='product'){$out[$key]='no product';continue;}
+   $ids=[];$err=[];
+   foreach((array)($d['images']??[]) as $im){$src=self::by_path((string)$im['file']);if(!$src){$err[]='src? '.$im['file'];continue;}
+    $id=self::clean_copy($src,(string)$im['clean'],(string)($im['alt']??''),(string)($im['caption']??''));if(is_wp_error($id)){$err[]=$id->get_error_message();continue;}$ids[]=$id;}
+   $vids=[];foreach((array)($d['videos']??[]) as $v){$y=self::yt($v['id']??'');if($y)$vids[]=['id'=>$y,'title'=>sanitize_text_field((string)($v['title']??''))];}
+   $cur=self::get($pid);
+   update_post_meta($pid,self::META,['title'=>sanitize_text_field((string)($d['title']??$cur['title'])),'intro'=>sanitize_text_field((string)($d['intro']??$cur['intro'])),'images'=>$ids?:$cur['images'],'videos'=>array_key_exists('videos',$d)?$vids:$cur['videos'],'v'=>1]);
+   $out[$pid]=['images'=>count($ids),'videos'=>count($vids),'errors'=>$err];
+  }
+  wp_send_json_success($out);
+ }
+ /* ---------- admin box ---------- */
+ static function box($post){
+  $m=self::get($post->ID);wp_enqueue_media();wp_nonce_field('agst-media','agst_media_nonce');
+  echo '<p style="margin-top:0">Shown under the product body: a project photo gallery (with lightbox) and a video row. Drag to reorder. Use clean, real project photos of this system only.</p>';
+  echo '<p><label>Section title<br><input type="text" class="widefat" name="agst_media_title" value="'.esc_attr($m['title']).'" placeholder="Real projects"></label></p>';
+  echo '<p><label>Short intro<br><input type="text" class="widefat" name="agst_media_intro" value="'.esc_attr($m['intro']).'"></label></p>';
+  echo '<input type="hidden" name="agst_media_images" id="agst-media-images" value="'.esc_attr(implode(',',self::images($post->ID))).'"><ul id="agst-media-list" style="display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px">';
+  foreach(self::images($post->ID) as $id){echo '<li data-id="'.$id.'" style="position:relative;cursor:move;margin:0">'.wp_get_attachment_image($id,'thumbnail',false,['style'=>'width:96px;height:96px;object-fit:cover;border-radius:6px;display:block']).'<button type="button" class="agst-media-x" aria-label="Remove photo" style="position:absolute;top:2px;right:2px;border:0;border-radius:50%;width:22px;height:22px;background:#000a;color:#fff;cursor:pointer">×</button></li>';}
+  echo '</ul><p><button type="button" class="button" id="agst-media-add">Add photos</button></p>';
+  $lines=[];foreach((array)$m['videos'] as $v)$lines[]='https://www.youtube.com/watch?v='.$v['id'].($v['title']!==''?' | '.$v['title']:'');
+  echo '<p><label>Videos (one per line: YouTube link | title)<br><textarea class="widefat" rows="4" name="agst_media_videos">'.esc_textarea(implode("\n",$lines)).'</textarea></label></p>';
+  ?><script>jQuery(function($){var L=$('#agst-media-list'),I=$('#agst-media-images');function sync(){I.val(L.children().map(function(){return $(this).data('id');}).get().join(','));}
+  if($.fn.sortable)L.sortable({update:sync});L.on('click','.agst-media-x',function(){$(this).closest('li').remove();sync();});
+  $('#agst-media-add').on('click',function(e){e.preventDefault();var f=wp.media({title:'Add project photos',library:{type:'image'},multiple:true,button:{text:'Add to product'}});f.on('select',function(){f.state().get('selection').each(function(a){a=a.toJSON();var u=(a.sizes&&a.sizes.thumbnail||a).url;L.append('<li data-id="'+a.id+'" style="position:relative;cursor:move;margin:0"><img src="'+u+'" style="width:96px;height:96px;object-fit:cover;border-radius:6px;display:block"><button type="button" class="agst-media-x" aria-label="Remove photo" style="position:absolute;top:2px;right:2px;border:0;border-radius:50%;width:22px;height:22px;background:#000a;color:#fff;cursor:pointer">×</button></li>');});sync();});f.open();});});</script><?php
+ }
+ static function save($pid){
+  if(!isset($_POST['agst_media_nonce'])||!wp_verify_nonce($_POST['agst_media_nonce'],'agst-media')||!current_user_can('edit_post',$pid)||wp_is_post_revision($pid))return;
+  $ids=array_values(array_filter(array_map('intval',explode(',',(string)($_POST['agst_media_images']??'')))));
+  $vids=[];foreach(preg_split('~\R~',(string)wp_unslash($_POST['agst_media_videos']??'')) as $l){$parts=array_map('trim',explode('|',$l,2));$y=self::yt($parts[0]??'');if($y)$vids[]=['id'=>$y,'title'=>sanitize_text_field($parts[1]??'')];}
+  $cur=self::get($pid);update_post_meta($pid,self::META,array_merge($cur,['title'=>sanitize_text_field(wp_unslash($_POST['agst_media_title']??'')),'intro'=>sanitize_text_field(wp_unslash($_POST['agst_media_intro']??'')),'images'=>$ids,'videos'=>$vids]));
+ }
+ /* ---------- front end ---------- */
+ /** <img> with an explicit srcset (theme filters strip WordPress' own and its "large" size is only 350px). */
+ static function img($id,$alt,$sizes,$eager=false){
+  $meta=wp_get_attachment_metadata($id);$full=wp_get_attachment_image_url($id,'full');$base=trailingslashit(dirname($full));$set=[];
+  foreach(['medium_large','large','medium'] as $k){if(!empty($meta['sizes'][$k]['file'])&&($meta['sizes'][$k]['width']??0)>=480)$set[(int)$meta['sizes'][$k]['width']]=$base.$meta['sizes'][$k]['file'];}
+  if(!empty($meta['width']))$set[(int)$meta['width']]=$full;ksort($set);$src=$set?reset($set):$full;$ss=[];foreach($set as $w=>$u)$ss[]=esc_url($u).' '.$w.'w';
+  return '<img src="'.esc_url($src).'" srcset="'.implode(', ',$ss).'" sizes="'.esc_attr($sizes).'" alt="'.esc_attr($alt).'" width="'.(int)($meta['width']??0).'" height="'.(int)($meta['height']??0).'" loading="'.($eager?'eager':'lazy').'" decoding="async">';
+ }
+ static function nav($pid,$page){$h='';if(self::images($pid))$h.='<a href="#agx-real">Projects</a>';if(self::videos($pid,$page))$h.='<a href="#agx-videos">Videos</a>';return $h;}
+ static function videos($pid,$page){$out=[];foreach((array)self::get($pid)['videos'] as $v){if(empty($v['id'])||strpos((string)$page,$v['id'])!==false)continue;$out[$v['id']]=$v;}return array_values($out);}
+ static function section($pid,$page){
+  $m=self::get($pid);$ids=self::images($pid);$h='';
+  if($ids){$n=count($ids);$title=$m['title']!==''?$m['title']:'Real projects';$intro=$m['intro']!==''?$m['intro']:'Completed installations by Aluglobus Aluminum Systems. Sizes, layouts and accessories vary by project.';
+   $h.='<section class="agx-section agx-real" id="agx-real"><div class="agx-section-heading"><div><p class="agx-eyebrow">Real projects</p><h2>'.esc_html($title).'</h2></div><p>'.esc_html($intro).'</p></div><div class="agx-real-grid" data-lb-group="real">';
+   foreach($ids as $i=>$id){$full=wp_get_attachment_image_url($id,'full');$alt=trim((string)get_post_meta($id,'_wp_attachment_image_alt',true));$cap=wp_get_attachment_caption($id);
+    $h.='<figure class="agx-real-item'.($i>=8?' is-more':'').'"><button type="button" class="agx-zoom" data-full="'.esc_url($full).'" data-caption="'.esc_attr($cap?:$alt).'" aria-label="Enlarge project photo '.($i+1).' of '.$n.'">'.self::img($id,$alt,$i===0?'(max-width:720px) 100vw, 50vw':'(max-width:720px) 50vw, 25vw',$i<3).'</button></figure>';}
+   $h.='</div>'.($n>8?'<div class="agx-real-actions"><button type="button" class="agx-button agx-button-line agx-real-more" aria-expanded="false">Show all '.$n.' photos</button></div>':'').'</section>';}
+  $vs=self::videos($pid,$page);
+  if($vs){$h.='<section class="agx-section agx-vids" id="agx-videos"><div class="agx-section-heading"><div><p class="agx-eyebrow">Watch</p><h2>'.(count($vs)>1?'Videos':'Video').'</h2></div><p>Installation, product and factory videos from Aluglobus Aluminum Systems.</p></div><div class="agx-vid-grid">';
+   foreach($vs as $v){$t=$v['title']!==''?$v['title']:'Aluglobus video';$h.='<button type="button" class="agx-vid" data-yt="'.esc_attr($v['id']).'" data-caption="'.esc_attr($t).'" aria-label="Play video: '.esc_attr($t).'"><span class="agx-vid-thumb"><img src="https://i.ytimg.com/vi/'.esc_attr($v['id']).'/hqdefault.jpg" alt="" onerror="this.style.visibility=\'hidden\'" loading="lazy" decoding="async" width="480" height="360"><span class="agx-vid-play" aria-hidden="true"></span></span><span class="agx-vid-title">'.esc_html($t).'</span></button>';}
+   $h.='</div></section>';}
+  return $h;
+ }
+}
+AGST_Media::boot();

@@ -1,0 +1,42 @@
+{
+ "_doc": "YouTube videos from the /gallery video list, with our own short titles (no clickbait, current brand). Groups -> product IDs. A video already embedded in a product's body is skipped at render time.",
+ "videos": {
+  "ZKZhiuigovQ": "Universal DIY gate system assembly",
+  "C1uIKU-MR7Y": "Universal DIY vs HD gate system: which one fits your project",
+  "EHwmiD9Qo0U": "The Universal DIY aluminum gate up close",
+  "4XVuDki6Vys": "Preparing a pedestrian gate installation",
+  "doeEF1tuWWg": "Aluminum sliding gate installation",
+  "3cRUF0kwEVM": "How our sliding gates are built",
+  "_HEfOcqyyG0": "Aluminum sliding gate in action",
+  "ahOkc64lVbQ": "Building a custom aluminum gate in our factory",
+  "cmkNon1BhK0": "Wood grain aluminum fence installation",
+  "DT7KD6SXqCc": "Wood-look aluminum fence and gate installation",
+  "AjL967HRVOE": "Wood grain aluminum gate and fence",
+  "qI6TytTnEs0": "Installing a wood grain fence, railing and gate",
+  "ZDXPZba324A": "Aluminum fence installation technique",
+  "TXVpOWVQmW4": "Front yard transformation with aluminum fencing",
+  "ePlVISveSOo": "Modern aluminum fence and gate",
+  "usx4FRnpgIk": "Why automatic louver patio covers are worth it",
+  "J5Hvv2b4q1A": "Aluminum louvered pergola",
+  "kd9hi_8VtRg": "Factory-direct aluminum patio covers",
+  "ff6zRlaJEVE": "Our patio covers are built here",
+  "pSTtIZXDj88": "Adding shade to a pool area",
+  "Mm04dwRmRGA": "How to install aluminum wall cladding",
+  "M4iSaZjXNeQ": "Feature walls with aluminum wall cladding",
+  "-9gavm0n0wQ": "Exterior upgrade with wall cladding",
+  "BY6gIubU9GY": "Wood-look aluminum cladding",
+  "rIafys0l8lk": "Inside our aluminum extrusion factory",
+  "AaIjhJ_RwlQ": "Our powder coating process"
+ },
+ "groups": {
+  "diy_gate":  {"videos": ["ZKZhiuigovQ", "EHwmiD9Qo0U", "C1uIKU-MR7Y", "4XVuDki6Vys"], "products": [38472, 26856, 26834, 26832, 38548, 39398, 38607, 63730, 63722, 63776, 63768, 63796, 39288, 38112, 38101]},
+  "hd_gate":   {"videos": ["C1uIKU-MR7Y", "ahOkc64lVbQ"], "products": [63458, 63456, 63453, 26616, 63443]},
+  "sliding":   {"videos": ["doeEF1tuWWg", "3cRUF0kwEVM", "_HEfOcqyyG0", "ahOkc64lVbQ"], "products": [26860, 26862, 38397, 38394, 60355, 60357, 60359, 60361, 38615, 38627, 63798, 38201, 38198, 26667, 26659, 26649, 26647]},
+  "woodgrain": {"videos": ["cmkNon1BhK0", "DT7KD6SXqCc", "AjL967HRVOE", "qI6TytTnEs0"], "products": [26830, 38548, 39398, 60355, 60357, 26550, 26551, 38607, 63796, 38615, 38627, 60254, 26547]},
+  "fence":     {"videos": ["ZDXPZba324A", "TXVpOWVQmW4", "ePlVISveSOo"], "products": [38464, 63253, 26830, 38571, 63738, 63201, 63235, 37442, 60784]},
+  "louver":    {"videos": ["usx4FRnpgIk", "J5Hvv2b4q1A"], "products": [57987, 58678, 63803]},
+  "patio":     {"videos": ["kd9hi_8VtRg", "ff6zRlaJEVE", "pSTtIZXDj88"], "products": [57987, 58678, 58015, 58684, 58025, 58030, 58036, 63803]},
+  "cladding":  {"videos": ["Mm04dwRmRGA", "M4iSaZjXNeQ", "-9gavm0n0wQ", "BY6gIubU9GY"], "products": [32975, 32907, 33037]},
+  "profiles":  {"videos": ["rIafys0l8lk", "AaIjhJ_RwlQ"], "products": [26805, 63283, 63276, 63302, 63299, 63221, 63717, 49286, 26587, 63169, 63712, 26550, 26551, 60254, 26547, 63757, 63754, 63291, 49300, 26603, 63797, 38152, 38149, 38146, 63764, 63451, 63449, 63446, 37442, 60784, 60092, 60071, 63264, 63261, 63149, 37478, 37481, 37475, 37472, 60025, 38143]}
+ }
+}

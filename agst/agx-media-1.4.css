@@ -1,0 +1,50 @@
+
+/* ===== agx media 1.4 (2026-10-02): real project gallery, videos, lightbox ===== */
+.agx .agx-real,.agx .agx-vids{background:#0b0d0e}
+.agx .agx-real-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:clamp(150px,15vw,230px);grid-auto-flow:dense;gap:clamp(8px,1vw,14px);margin-top:clamp(20px,2.4vw,32px)}
+.agx .agx-real-item{margin:0;position:relative;overflow:hidden;border-radius:14px;background:#151818}
+.agx .agx-real-item:first-child{grid-column:span 2;grid-row:span 2}
+.agx .agx-real-item:nth-child(6){grid-column:span 2}
+.agx .agx-real-item .agx-zoom{all:unset;display:block;width:100%;height:100%;cursor:zoom-in}
+.agx .agx-real-item img{width:100%!important;height:100%!important;object-fit:cover;display:block;transition:transform .45s ease,filter .3s}
+.agx .agx-real-item:hover img{transform:scale(1.04);filter:brightness(1.06)}
+.agx .agx-real-item .agx-zoom:focus-visible{outline:3px solid #ff792d;outline-offset:-3px}
+.agx .agx-real-item.is-more{display:none}
+.agx .agx-real.is-open .agx-real-item.is-more{display:block}
+.agx .agx-real-actions{display:flex;justify-content:center;margin-top:22px}
+.agx .agx-real-more{min-height:46px}
+.agx .agx-vid-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:clamp(12px,1.4vw,20px);margin-top:clamp(20px,2.4vw,32px)}
+.agx .agx-vid{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:12px;border-radius:14px;background:#141818;border:1px solid #262b2a;overflow:hidden;transition:border-color .2s,transform .2s}
+.agx .agx-vid:hover{border-color:#ff792d;transform:translateY(-2px)}
+.agx .agx-vid:focus-visible{outline:3px solid #ff792d}
+.agx .agx-vid-thumb{position:relative;display:block;aspect-ratio:16/9;background:#0b0d0e;overflow:hidden}
+.agx .agx-vid-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.agx .agx-vid-play{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:#ff792d;box-shadow:0 8px 24px #0008}
+.agx .agx-vid-play:after{content:"";position:absolute;left:23px;top:18px;border-style:solid;border-width:11px 0 11px 17px;border-color:transparent transparent transparent #131515}
+.agx .agx-vid-title{padding:0 16px 16px;font-size:14px;font-weight:650;line-height:1.35;color:#f4f2ed}
+@media(max-width:1024px){.agx .agx-real-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:720px){
+ .agx .agx-real-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:42vw;gap:8px}
+ .agx .agx-real-item{border-radius:10px}
+ .agx .agx-real-item:nth-child(6){grid-column:auto}
+ .agx .agx-real-item:nth-child(n+7){display:none}
+ .agx .agx-real.is-open .agx-real-item{display:block}
+ .agx .agx-vid-grid{grid-template-columns:1fr}
+}
+/* lightbox */
+.agx-lb{border:0;padding:0;margin:0;width:100vw;height:100dvh;max-width:none;max-height:none;background:#050606f2;color:#f4f2ed;overflow:hidden}
+.agx-lb::backdrop{background:#000c}
+.agx-lb[open]{display:flex;flex-direction:column}
+.agx-lb-stage{flex:1;display:flex;align-items:center;justify-content:center;padding:56px 72px 8px;min-height:0}
+.agx-lb-stage img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;user-select:none}
+.agx-lb-video{width:min(100%,1280px);aspect-ratio:16/9;max-height:100%}
+.agx-lb-video iframe{width:100%;height:100%;border:0;border-radius:8px;background:#000}
+.agx-lb-bar{display:flex;justify-content:space-between;gap:16px;padding:12px 24px 18px;font:500 14px/1.4 Inter,system-ui,sans-serif}
+.agx-lb-cap{color:#d8d6d0}.agx-lb-count{color:#a4abab;white-space:nowrap}
+.agx-lb-btn,.agx-lb-close{position:absolute;border:1px solid #ffffff33;background:#0b0d0ecc;color:#fff;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s,border-color .2s}
+.agx-lb-btn{top:50%;width:52px;height:52px;margin-top:-26px;font-size:30px;line-height:1}
+.agx-lb-prev{left:14px}.agx-lb-next{right:14px}
+.agx-lb-close{top:12px;right:14px;width:42px;height:42px;font-size:18px}
+.agx-lb-btn:hover,.agx-lb-close:hover{background:#ff792d;border-color:#ff792d;color:#131515}
+.agx-lb.is-single .agx-lb-btn{display:none}
+@media(max-width:720px){.agx-lb-stage{padding:56px 8px 4px}.agx-lb-btn{top:auto;bottom:60px;width:44px;height:44px;margin:0}.agx-lb-bar{padding:10px 16px 16px;font-size:13px}}
