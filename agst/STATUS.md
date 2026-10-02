@@ -1,4 +1,35 @@
-# Status (2026-10-02) — read agst/HANDOFF.md first for full background and owner rules
+# Status (2026-10-02, session 2) — read agst/HANDOFF.md first for full background and owner rules
+
+## Done in session 2 (cloud Playwright, logged in with env creds)
+- **Cache purge fixed.** `_wpo_purge` needs a per-login nonce; the old `d2942c5514` silently did nothing.
+  `tools/purge.js` reads a fresh nonce from WP-Optimize > Cache and also flushes the object cache (`roc_flush_cache`).
+  Verified: 322 MB -> 0, visitor pages now served with today's build (`wpo-cache-status: cached`, new Last-Modified).
+- **[ar-display] nesting bug fixed** in `AGST_Spec::part('shortcode')`: emitted as a text-editor widget
+  (`.agx-shortcode`, `<div class="agx-ar">[ar-display …]</div>`) instead of Elementor's shortcode widget.
+  New filter `elementor/frontend/widget/should_render` skips `agx-shortcode` widgets whose shortcode is not registered,
+  so visitors never see raw `[ar-display …]` (AR plugins "ar-for-woocommerce"/"ar-for-wordpress" are **inactive on staging**;
+  shortcodes are kept in the data and will render where the plugin is active). Specs were NOT changed (58015 spec untouched).
+- **Empty quote buttons fixed.** Buttons with `#elementor-action:…popup…` rendered `href=""`. The builder now uses
+  Elementor Pro's popup dynamic tag (`__dynamic__.link`), still editable in Elementor. Click-tested: popup 52024 opens with its form (desktop + mobile).
+- **All 144 published products rebuilt** (`agst_el_build` force=1, all ok). The 73 `_agst_el 1.0` products are now 2.0 (dark-on-dark text gone).
+- **CSS** (ASSET_VERSION 1.0.1 -> 1.0.4): agx-fixes-1.1 (buy box orange/outline, card grids no orphan holes),
+  agx-fixes-1.2 (mobile: hide Lasa duplicate `.mobile-attribute-list` picker + overlay, one-column trust bar, nav edge fade,
+  stacked spec rows, chat bubble label hidden <=768px), agx-fixes-1.3 (compact labelled wishlist row, fact tiles clamped to 3 lines).
+- **Template:** the "Package details" section (+ its nav link and hero button) is only shown when the product has real
+  inclusions or post options; before, it repeated the spec list with boilerplate.
+- **Brand:** `agst_brand_fix` now also turns a title suffix "- Aluglobusfence.com" into "- Aluglobus Aluminum Systems" (39 older products).
+- **QA sweep:** every published product at 1366 and 390 (full-page screenshots + metrics): 0 nested sections, 0 empty button links,
+  0 raw shortcodes, 0 low-contrast text, no horizontal scroll, one H1 each.
+- Plugin source snapshot in `plugin-src/` (as deployed), tools in `tools/` (see tools/README.md).
+
+## Notes for the owner
+- 38472 (ALU20 4x6 DIY gate) has a hosted video named `ghalil-edit-please-.mov` (from the original page). Looks like an internal draft; check it.
+- 38143 "ALUMINUM POST" has only 1 body section (original page was one paragraph).
+- Instagram/YouTube blocks are third-party and were not part of this QA.
+
+---
+
+# Earlier status (2026-10-02, session 1) — read agst/HANDOFF.md first for full background and owner rules
 
 ## Done this session
 - Task 1: all 69 specs from agst-page-specs-69.json written to `_agst_page_spec` and verified by read-back (69/69).
