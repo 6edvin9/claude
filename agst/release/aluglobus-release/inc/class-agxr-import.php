@@ -98,7 +98,9 @@ final class AGXR_Import {
 		}
 		$p = get_post($id);
 		if (!$p || $p->post_modified < AGXR_Bundle::CLONE_DATE) { return ''; }
-		if (AGXR_Journal::touched($p->post_type === 'product_variation' ? 'variation' : 'product', $id)) { return ''; }
+		// a modified date from the release's own writes or rollback is not a live edit
+		$last = AGXR_Journal::last_write($p->post_type === 'product_variation' ? 'variation' : 'product', $id);
+		if ($last !== '' && strtotime($p->post_modified) <= strtotime($last) + 300) { return ''; }
 		return $p->post_modified;
 	}
 

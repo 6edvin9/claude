@@ -53,7 +53,12 @@ final class AGXR_Journal {
 		return (int) $wpdb->insert_id;
 	}
 
-	static function mark($id, $state) { global $wpdb; $wpdb->update(self::table(), ['state' => $state], ['id' => (int) $id]); }
+	static function mark($id, $state) {
+		global $wpdb;
+		$set = ['state' => $state];
+		if (in_array($state, ['rolled_back', 'failed'], true)) { $set['undone'] = current_time('mysql'); }
+		$wpdb->update(self::table(), $set, ['id' => (int) $id]);
+	}
 
 	static function rows($where = '1=1', $args = [], $order = 'ASC', $limit = 0) {
 		global $wpdb;
@@ -69,11 +74,12 @@ final class AGXR_Journal {
 		return $wpdb->get_results('SELECT step, state, COUNT(*) n, MIN(created) first, MAX(created) last FROM ' . self::table() . ' GROUP BY step, state ORDER BY MIN(id)', ARRAY_A);
 	}
 
-	/** Has a release run written to this object (so a new modified date is ours, not a live edit)? */
-	static function touched($otype, $oid) {
+	/** Last time the release wrote to or restored this object ('' if never), local time. */
+	static function last_write($otype, $oid) {
 		global $wpdb;
-		if (!self::ready()) { return false; }
-		return (bool) $wpdb->get_var($wpdb->prepare('SELECT id FROM ' . self::table() . " WHERE otype=%s AND oid=%d AND state='applied' LIMIT 1", $otype, (int) $oid));
+		if (!self::ready()) { return ''; }
+		$r = $wpdb->get_row($wpdb->prepare('SELECT MAX(created) c, MAX(undone) u FROM ' . self::table() . ' WHERE otype=%s AND oid=%d', $otype, (int) $oid), ARRAY_A);
+		return (string) max((string) ($r['c'] ?? ''), (string) ($r['u'] ?? ''));
 	}
 
 	/** Live object created by a run for a staging id (so re-runs reuse it instead of creating a duplicate). */
