@@ -335,6 +335,8 @@ final class AGXR_Import {
 		return 0;
 	}
 
+	const PRICE_META = ['_regular_price', '_sale_price', '_price'];
+
 	/** Only a simple product may become variable (staging added colour options to a few simple products). */
 	static function convertible($from, $to) { return $from === 'simple' && $to === 'variable'; }
 
@@ -550,15 +552,20 @@ final class AGXR_Import {
 		$type = wc_get_product($id)->get_type();
 		if ($type !== $p['type'] && !self::convertible($type, $p['type'])) { throw new RuntimeException('Product type differs (' . $type . ' here, ' . $p['type'] . ' on staging): skipped.'); }
 		if (!$p['new'] && self::edited_on_live($id) && empty(self::$opts['include_edited'])) { return ['label' => $label, 'changes' => [], 'issues' => [self::issue('warn', 'Held back: edited on this site after the staging copy.')]]; }
-		$tj = 0;
-		if ($type !== $p['type']) { $tj = AGXR_Journal::record(self::$run, 'products', 'product', $id, $p['sid'], 'tax:product_type', true, $type, $p['type']); self::set_type($id, $p['type']); }
+		$tj = [];
+		if ($type !== $p['type']) {
+			// the simple product's own price fields are saved first: a variable product does not read or keep them
+			foreach (self::PRICE_META as $mk) { $tj[] = AGXR_Journal::record(self::$run, 'products', 'product', $id, $p['sid'], 'meta:' . $mk, metadata_exists('post', $id, $mk), get_post_meta($id, $mk, true), null, 'price before type change'); }
+			$tj[] = AGXR_Journal::record(self::$run, 'products', 'product', $id, $p['sid'], 'tax:product_type', true, $type, $p['type']);
+			self::set_type($id, $p['type']);
+		}
 		try {
 			$done = self::write($id, self::desired($p), 'products', $p['sid'], false);
 		} catch (Throwable $e) {
-			if ($tj) { self::undo_rows([$tj]); }
+			if ($tj) { self::undo_rows($tj); }
 			throw $e;
 		}
-		if ($tj) { AGXR_Journal::mark($tj, 'applied'); array_unshift($done, self::change('product type', $type, $p['type'])); }
+		if ($tj) { foreach ($tj as $j) { AGXR_Journal::mark($j, 'applied'); } array_unshift($done, self::change('product type', $type, $p['type'])); }
 		return $done ? ['label' => $label, 'changes' => $done, 'issues' => []] : null;
 	}
 
@@ -973,6 +980,15 @@ final class AGXR_Import {
 				if (isset($fields['tax:product_type'])) {
 					$t = (string) $fields['tax:product_type']['before'];
 					self::set_type($id, $t);
+					// price fields first, so the rebuilt simple product reads its original price
+					foreach (self::PRICE_META as $mk) {
+						if (!isset($fields['meta:' . $mk])) { continue; }
+						$r = $fields['meta:' . $mk];
+						if ($r['existed']) { update_post_meta($id, $mk, wp_slash($r['before'])); } else { delete_post_meta($id, $mk); }
+						AGXR_Journal::mark($r['id'], $state);
+						unset($fields['meta:' . $mk]);
+					}
+					wp_cache_delete($id, 'post_meta');
 					// a fresh object of the restored type (a cached variable object would ignore the simple price)
 					$cls = WC_Product_Factory::get_product_classname($id, $t);
 					$wcp = new $cls($id);
