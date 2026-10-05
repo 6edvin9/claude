@@ -13,14 +13,22 @@ One plugin, `aluglobus-release`, carries everything built on staging (globusgate
   - SEO text
   - new photos
 
-## How "remove the plugin = back to the original" works
+## On / off behaviour
 
-| Part | What happens when the plugin is deactivated |
+| Action | What happens |
 |---|---|
-| Product page design, /shop and category pages, new product bodies, photo galleries, related products, brand fix in titles | **Reverts at once.** The new bodies are stored in the plugin's own fields (`_agx_el_*`). While the plugin is active, Elementor reads and saves those instead of the originals. Live's original `_elementor_data` and descriptions are never overwritten. |
-| Store data: new products, prices, product status, categories, redirects, two WPCode snippets, plugin settings | **Stays** (WordPress keeps this data whatever happens to plugins, and it must not flip back by itself). Every value is saved before it is changed. **Roll back** on the plugin page restores all of it. |
+| **Upload + activate** | Nothing visible changes. Theme pages, products and prices stay exactly as they are. The plugin only creates its rollback table. |
+| **Analyze** | Read-only. Lists every change (old → new) before anything is written. |
+| **Apply** | Writes the catalog. Before every write the current value is saved in the journal (`wp_agxr_journal`). When Apply finishes, the new product and shop pages switch on. |
+| **Deactivate** | **Full undo**, automatically: <ul><li>every saved value is put back: prices, products, categories, redirects, snippets, settings;</li><li>products and variations the release created go to the trash;</li><li>categories, tags and attributes it created are removed once unused;</li><li>the original Elementor pages show again (live's original bodies were never overwritten; the new bodies only ever lived in the plugin's own fields).</li></ul> |
+| **Roll back** button | The same undo without deactivating. |
+| **Delete plugin** | Keeps the journal table, so a reinstalled copy can still roll back. |
 
-**Deleting** the plugin keeps the rollback record (database table `wp_agxr_journal`). Reinstall the plugin and you can still roll back.
+Two things stay after an undo:
+- Images the release added stay in the media library (unused).
+- Stock quantities are never touched by the release at all.
+
+If the server stops a long deactivation part-way, the plugin stays active or shows a notice. Deactivate again, or press Roll back, and it carries on from where it stopped.
 
 ## Safety features
 
@@ -31,6 +39,7 @@ One plugin, `aluglobus-release`, carries everything built on staging (globusgate
   - When a published product's URL would change after a write, that product is restored immediately.
   - A new product whose URL is already taken is not created.
 - **Edited on live since the staging copy (14 Sept 2026)?** Those products are held back unless you tick the option.
+- **Stock is never written.** Stock quantity, stock management and backorders are never changed. Stock status isn't set where WooCommerce calculates it.
 - **Matching:** existing objects are matched by ID **and** URL slug. A mismatch is skipped and reported.
 - **Per-item undo:** every field is journaled before it is written and checked after. An item that fails is put back on the spot.
 - **New products are never shown half-built.** They are created as drafts and published only when complete.
@@ -40,6 +49,17 @@ One plugin, `aluglobus-release`, carries everything built on staging (globusgate
   - New categories are removed only if they are empty.
 - **Locked:** two tabs cannot run steps at the same time.
 - **No staging tools on live.** The staging catalog importer and every staging write tool are switched off in this build.
+
+## Tested
+
+A local copy built to look like live before the release ran two full rounds of Apply → check → deactivate:
+- WordPress 6.5, WooCommerce 9.3
+- 323 existing products in their pre-release state
+- old categories, redirects and snippets
+
+Each Apply wrote 4,352 values with 0 errors and created 65 products. Each deactivation put back every product, price, status, category, redirect, snippet and setting, plus the original bodies.
+
+What remained differs only in WooCommerce-generated data: cached category counts, and the automatic variation summary text.
 
 ## Recommended procedure
 

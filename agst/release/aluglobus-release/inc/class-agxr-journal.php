@@ -69,6 +69,13 @@ final class AGXR_Journal {
 		return $wpdb->get_results('SELECT step, state, COUNT(*) n, MIN(created) first, MAX(created) last FROM ' . self::table() . ' GROUP BY step, state ORDER BY MIN(id)', ARRAY_A);
 	}
 
+	/** Has a release run written to this object (so a new modified date is ours, not a live edit)? */
+	static function touched($otype, $oid) {
+		global $wpdb;
+		if (!self::ready()) { return false; }
+		return (bool) $wpdb->get_var($wpdb->prepare('SELECT id FROM ' . self::table() . " WHERE otype=%s AND oid=%d AND state='applied' LIMIT 1", $otype, (int) $oid));
+	}
+
 	/** Live object created by a run for a staging id (so re-runs reuse it instead of creating a duplicate). */
 	static function created($otype, $skey) {
 		global $wpdb;

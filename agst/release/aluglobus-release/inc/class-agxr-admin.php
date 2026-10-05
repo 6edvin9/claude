@@ -3,7 +3,8 @@ if (!defined('ABSPATH')) { exit; }
 
 /** WooCommerce > Catalog Release: analyze, apply, roll back (and on staging: build the bundle). */
 final class AGXR_Admin {
-	public static $runtime = false;
+	public static $runtime = false;   // design layer loaded on this request
+	public static $available = false; // design layer can load (staging test plugin not active)
 
 	static function boot() {
 		add_action('admin_menu', function () {
@@ -19,7 +20,7 @@ final class AGXR_Admin {
 			$s = get_option('agxr_state');
 			if (!is_array($s) || ($s['state'] ?? '') !== 'applied') { return; }
 			echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="notice inline notice-warning notice-alt"><p>'
-				. 'Deactivating shows the original product pages again. The catalog data changes (new products, prices, categories, redirects) stay until you use <a href="' . esc_url(admin_url('admin.php?page=agxr-release')) . '">Roll back</a>. Deleting the plugin keeps the rollback record.'
+				. '<b>Deactivating this plugin undoes the catalog release:</b> prices, products, categories, redirects and settings go back to their saved original values, products the release created go to the trash, and the original product pages show again. Use <a href="' . esc_url(admin_url('admin.php?page=agxr-release')) . '">Catalog Release</a> to see the saved values.'
 				. '</p></div></td></tr>';
 		});
 	}
@@ -29,11 +30,32 @@ final class AGXR_Admin {
 		AGXR_Overlay::clear_caches();
 	}
 
-	/** Deactivation: the original Elementor pages come back; drop caches built from the new bodies. Data is not touched. */
+	/**
+	 * Deactivation = back to the original site:
+	 *  - every store-data change made by Apply is rolled back from the journal (prices, products, categories,
+	 *    redirects, snippets, settings; products the release created go to the trash),
+	 *  - the original Elementor pages show again (the new bodies were only ever in the plugin's own fields),
+	 *  - Elementor and page caches are cleared.
+	 * If the server stops the request before the rollback finishes, the rest is kept in the journal: activate the
+	 * plugin again and press Roll back (or deactivate again).
+	 */
 	static function deactivate() {
+		// a rollback already running in another request (for example a repeated click) finishes on its own
+		$locked = false;
+		if (AGXR_Journal::ready() && self::applied_rows() > 0 && function_exists('WC') && ($locked = AGXR_Import::lock())) {
+			@set_time_limit(0);
+			ignore_user_abort(true);
+			wp_raise_memory_limit('admin');
+			$start = time();
+			$r = ['left' => 0, 'done' => 0];
+			do { $r = AGXR_Import::rollback_batch(200); } while ($r['left'] > 0 && $r['done'] > 0 && time() - $start < 240);
+			if ($r['left'] > 0) { update_option('agxr_undo_incomplete', (int) $r['left'], false); } else { delete_option('agxr_undo_incomplete'); }
+		}
 		AGXR_Overlay::clear_caches();
-		delete_option('agxr_lock');
+		if ($locked) { AGXR_Import::unlock(); }
 	}
+
+	static function applied_rows() { global $wpdb; return AGXR_Journal::ready() ? (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . AGXR_Journal::table() . " WHERE state='applied'") : 0; }
 
 	private static function can() { return current_user_can('manage_options') && current_user_can('manage_woocommerce'); }
 
@@ -118,7 +140,9 @@ final class AGXR_Admin {
 		try { $bundle = AGXR_Bundle::load(); } catch (Throwable $e) { $err = $e->getMessage(); }
 		$mode = AGXR_Bundle::is_source() ? 'staging (bundle source)' : (AGXR_Bundle::is_live() ? 'LIVE SITE' : 'copy / rehearsal site');
 		echo '<div class="wrap agxr"><h1>Catalog Release ' . esc_html(AGXR_VERSION) . '</h1>';
-		echo '<p><b>Site:</b> ' . esc_html(home_url()) . ' — <b>' . esc_html($mode) . '</b>. <b>New page design:</b> ' . (self::$runtime ? 'on (deactivate this plugin to show the original pages)' : 'not loaded (the staging test plugin is active)') . '.</p>';
+		echo '<p><b>Site:</b> ' . esc_html(home_url()) . ' — <b>' . esc_html($mode) . '</b>. <b>New page design:</b> ' . (self::$runtime ? 'on' : (self::$available ? 'off (switches on when the release is applied)' : 'cannot load while the staging test plugin is active')) . '.</p>';
+		echo '<div class="notice notice-info inline"><p><b>Undo:</b> deactivating this plugin rolls back everything Apply changed and shows the original pages again. Roll back below does the same without deactivating.</p></div>';
+		if ((int) get_option('agxr_undo_incomplete')) { echo '<div class="notice notice-error inline"><p>The last deactivation could not finish the rollback (' . (int) get_option('agxr_undo_incomplete') . ' values left). Press Roll back below to finish it.</p></div>'; }
 		if ($err) { echo '<div class="notice notice-warning"><p>' . esc_html($err) . '</p></div>'; }
 		if ($bundle) {
 			echo '<p><b>Bundle:</b> made ' . esc_html($bundle['created']) . ' on ' . esc_html($bundle['source']['home']) . ', ' . count($bundle['products']) . ' products, ' . count($bundle['redirects']) . ' redirects, ' . count($bundle['media']) . ' media files.</p>';

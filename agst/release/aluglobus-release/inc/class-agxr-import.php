@@ -17,7 +17,8 @@ final class AGXR_Import {
 		'variations' => 'Product variations', 'links' => 'Related-product links', 'redirects' => 'Redirects', 'wpcode' => 'WPCode snippets',
 		'options' => 'Plugin settings', 'finish' => 'Caches and counts',
 	];
-	const PROPS = ['regular_price', 'sale_price', 'sku', 'stock_status', 'manage_stock', 'stock_quantity', 'backorders', 'tax_status', 'tax_class', 'weight', 'length', 'width', 'height'];
+	/** Stock quantity, stock management and backorders are never written: live's numbers are newer than staging's. */
+	const PROPS = ['regular_price', 'sale_price', 'sku', 'stock_status', 'tax_status', 'tax_class', 'weight', 'length', 'width', 'height'];
 	const PARENT_PROPS = ['catalog_visibility', 'featured', 'sold_individually', 'reviews_allowed', 'purchase_note', 'shipping_class', 'image', 'gallery', 'cats', 'tags', 'attributes', 'default_attributes'];
 	const POST_FIELDS = ['post_title' => 'name', 'post_content' => 'description', 'post_excerpt' => 'short_description', 'post_status' => 'status', 'menu_order' => 'menu_order'];
 
@@ -85,9 +86,20 @@ final class AGXR_Import {
 	static function change($field, $before, $after, $note = '') { return ['field' => $field, 'before' => self::short($before), 'after' => self::short($after), 'note' => $note]; }
 	static function issue($level, $text) { return ['level' => $level, 'text' => $text]; }
 
+	/**
+	 * Modified on this site after the staging copy by someone else. During Apply the list is taken once, before the
+	 * first write (WooCommerce re-saves related products such as grouped parents in the background, which would
+	 * otherwise look like a live edit).
+	 */
 	static function edited_on_live($id) {
+		if (self::$run !== '') {
+			$held = get_option('agxr_held', null);
+			if (is_array($held)) { return $held[(int) $id] ?? ''; }
+		}
 		$p = get_post($id);
-		return $p && $p->post_modified >= AGXR_Bundle::CLONE_DATE ? $p->post_modified : '';
+		if (!$p || $p->post_modified < AGXR_Bundle::CLONE_DATE) { return ''; }
+		if (AGXR_Journal::touched($p->post_type === 'product_variation' ? 'variation' : 'product', $id)) { return ''; }
+		return $p->post_modified;
 	}
 
 	/** Lock so two browser tabs cannot run steps at the same time. */
@@ -108,7 +120,7 @@ final class AGXR_Import {
 		if (!function_exists('WC') || version_compare(WC_VERSION, '8.0', '<')) { $i[] = self::issue('block', 'WooCommerce 8 or newer must be active.'); }
 		if (function_exists('get_woocommerce_currency') && get_woocommerce_currency() !== ($b['source']['currency'] ?? 'USD')) { $i[] = self::issue('block', 'Store currency differs from the staging store.'); }
 		if (!defined('ELEMENTOR_VERSION')) { $i[] = self::issue('block', 'Elementor must be active (product bodies are Elementor content).'); }
-		if (!AGXR_Admin::$runtime) { $i[] = self::issue('block', 'The new page design is not loaded (is the "Aluglobus Staging Catalog Test" plugin active? Deactivate it here).'); }
+		if (!AGXR_Admin::$available) { $i[] = self::issue('block', 'The new page design cannot load while the "Aluglobus Staging Catalog Test" plugin is active. Deactivate that plugin here.'); }
 		global $wpdb;
 		$gt = $wpdb->prefix . 'redirection_groups';
 		if ($wpdb->get_var("SHOW TABLES LIKE '$gt'") !== $gt) { $i[] = self::issue('warn', 'The Redirection plugin is not installed: the redirect step will be skipped.'); }
@@ -135,6 +147,15 @@ final class AGXR_Import {
 	}
 	static function apply_preflight($k) {
 		foreach (self::checks() as $c) { if ($c['level'] === 'block') { throw new RuntimeException($c['text']); } }
+		// products edited here after the staging copy, taken before anything is written
+		$run = self::$run; self::$run = '';
+		$held = [];
+		foreach (AGXR_Bundle::load()['products'] as $p) {
+			if ($p['new']) { continue; }
+			if ($d = self::edited_on_live((int) $p['sid'])) { $held[(int) $p['sid']] = $d; }
+		}
+		self::$run = $run;
+		update_option('agxr_held', $held, false);
 		return ['label' => 'Checks passed', 'changes' => [], 'issues' => []];
 	}
 
@@ -303,9 +324,9 @@ final class AGXR_Import {
 			return (int) $live->ID;
 		}
 		$c = AGXR_Journal::created('product', $p['sid']);
-		if ($c && get_post($c)) { return $c; }
+		if ($c && get_post($c) && get_post_status($c) !== 'trash') { return $c; }
 		$m = AGXR_Bundle::post($p['sid']);
-		if ($m && get_post($m)) { return $m; }
+		if ($m && get_post($m) && get_post_status($m) !== 'trash') { return $m; }
 		// self-test on the staging site itself: the product is the same post
 		if (AGXR_Bundle::is_source()) { $g = get_post((int) $p['sid']); if ($g && $g->post_type === 'product' && $g->post_name === $p['slug']) { return (int) $g->ID; } }
 		return 0;
@@ -368,6 +389,12 @@ final class AGXR_Import {
 		return [true, $p->$g('edit')];
 	}
 
+	/** Product (any status except trash) that already uses this URL slug. */
+	static function slug_taken($slug, $except = 0) {
+		global $wpdb;
+		return (int) $wpdb->get_var($wpdb->prepare("SELECT ID FROM {$wpdb->posts} WHERE post_type='product' AND post_name=%s AND post_status NOT IN ('trash','auto-draft') AND ID<>%d LIMIT 1", $slug, (int) $except));
+	}
+
 	static function slugs($ids, $tax) { $o = []; foreach ((array) $ids as $i) { $t = get_term((int) $i, $tax); if ($t && !is_wp_error($t)) { $o[] = $t->slug; } } sort($o); return $o; }
 
 	/** Set one WooCommerce field on a product object (not saved). */
@@ -376,7 +403,23 @@ final class AGXR_Import {
 			case 'image': $p->set_image_id((int) $v); return;
 			case 'gallery': $p->set_gallery_image_ids(array_map('intval', (array) $v)); return;
 			case 'cats': $ids = []; foreach ((array) $v as $s) { $t = AGXR_Bundle::term('product_cat', $s); if (!$t) { throw new RuntimeException('Category "' . $s . '" missing.'); } $ids[] = $t; } $p->set_category_ids($ids); return;
-			case 'tags': $ids = []; foreach ((array) $v as $s) { $t = AGXR_Bundle::term('product_tag', $s); if (!$t) { $n = wp_insert_term($s, 'product_tag', ['slug' => $s]); $t = is_wp_error($n) ? 0 : (int) $n['term_id']; } if ($t) { $ids[] = $t; } } $p->set_tag_ids($ids); return;
+			case 'tags':
+				$ids = [];
+				foreach ((array) $v as $s) {
+					$t = AGXR_Bundle::term('product_tag', $s);
+					if (!$t && self::$run !== '') {
+						$jid = AGXR_Journal::record(self::$run, 'products', 'term', 0, 'product_tag:' . $s, '__created', false, null, $s);
+						$n = wp_insert_term($s, 'product_tag', ['slug' => $s]);
+						if (is_wp_error($n)) { AGXR_Journal::mark($jid, 'failed'); continue; }
+						$t = (int) $n['term_id'];
+						global $wpdb;
+						$wpdb->update(AGXR_Journal::table(), ['oid' => $t], ['id' => $jid]);
+						AGXR_Journal::mark($jid, 'applied');
+					}
+					if ($t) { $ids[] = $t; }
+				}
+				$p->set_tag_ids($ids);
+				return;
 			case 'shipping_class': $t = $v === '' ? 0 : AGXR_Bundle::term('product_shipping_class', $v); $p->set_shipping_class_id($t); return;
 			case 'attributes':
 				if ($p->is_type('variation')) { $p->set_attributes((array) $v); return; }
@@ -405,6 +448,13 @@ final class AGXR_Import {
 	static function diff($id, $want) {
 		$wcp = wc_get_product($id);
 		$c = [];
+		// when this site manages stock for the item, WooCommerce derives the stock status from the quantity
+		// and a variable or grouped product's stock status comes from its children
+		if ($wcp->get_manage_stock('edit') || ($wcp->is_type('variation') && $wcp->get_manage_stock() === 'parent') || $wcp->is_type(['variable', 'grouped'])) { unset($want['prop:stock_status']); }
+		// variation options that refer to an attribute this site does not have cannot be written: leave them as they are
+		if ($wcp->is_type('variation') && isset($want['prop:attributes'])) {
+			foreach (array_keys((array) $want['prop:attributes']) as $ak) { if (strpos($ak, 'pa_') === 0 && !taxonomy_exists($ak)) { unset($want['prop:attributes']); break; } }
+		}
 		foreach ($want as $f => $v) {
 			list($has, $cur) = self::current($id, $f, $wcp);
 			if ($f === 'prop:attributes' && !$wcp->is_type('variation')) { $cur = self::sortdeep($cur); $v = self::sortdeep($v); }
@@ -418,8 +468,8 @@ final class AGXR_Import {
 		$r = ['label' => $p['post']['post_title'] . ' (' . ($p['new'] ? 'new' : 'ID ' . $p['sid']) . ')', 'changes' => [], 'issues' => []];
 		$id = self::product_target($p);
 		if (!$id) {
-			$dup = get_page_by_path($p['slug'], OBJECT, 'product');
-			if ($dup) { $r['issues'][] = self::issue('error', 'A product with the URL slug "' . $p['slug'] . '" already exists here (ID ' . $dup->ID . '): not created.'); return $r; }
+			$dup = self::slug_taken($p['slug']);
+			if ($dup) { $r['issues'][] = self::issue('error', 'A product with the URL slug "' . $p['slug'] . '" already exists here (ID ' . $dup . '): not created.'); return $r; }
 			$r['changes'][] = self::change('create', '', $p['type'] . ' product, ' . $p['post']['post_status'] . ', /' . $p['slug'] . '/');
 			return $r;
 		}
@@ -436,7 +486,7 @@ final class AGXR_Import {
 		$label = $p['post']['post_title'];
 		$id = self::product_target($p);
 		if (!$id) {
-			if (get_page_by_path($p['slug'], OBJECT, 'product')) { throw new RuntimeException('URL slug "' . $p['slug'] . '" already used here: not created.'); }
+			if (self::slug_taken($p['slug'])) { throw new RuntimeException('URL slug "' . $p['slug'] . '" already used here: not created.'); }
 			$class = WC_Product_Factory::get_product_classname(0, $p['type']);
 			$wcp = new $class();
 			$wcp->set_name($p['post']['post_title']);
@@ -456,7 +506,14 @@ final class AGXR_Import {
 			$want['post:post_status'] = 'draft';
 			self::write($id, $want, 'products', $p['sid'], true);
 			// publish last, so a half-built product is never visible
-			if ($status !== 'draft') { self::write($id, ['post:post_status' => $status], 'products', $p['sid'], true); }
+			if ($status !== 'draft') {
+				self::write($id, ['post:post_status' => $status], 'products', $p['sid'], true);
+				if (get_post_field('post_name', $id) !== $p['slug']) {
+					$got = get_post_field('post_name', $id);
+					wp_trash_post($id);
+					throw new RuntimeException('Publishing gave the new product the URL "' . $got . '" instead of "' . $p['slug'] . '"; moved to trash.');
+				}
+			}
 			return ['label' => $label, 'changes' => [self::change('created', '', '/' . $p['slug'] . '/ (' . $status . ')')], 'issues' => []];
 		}
 		AGXR_Bundle::set_map('post', $p['sid'], $id);
@@ -520,7 +577,7 @@ final class AGXR_Import {
 			return (int) $live->ID;
 		}
 		$c = AGXR_Journal::created('variation', $v['sid']);
-		if ($c && get_post($c)) { return $c; }
+		if ($c && get_post($c) && get_post_status($c) !== 'trash') { return $c; }
 		// same option combination already on the parent: reuse it
 		$par = wc_get_product($parent_id);
 		if ($par && $par->is_type('variable')) {
@@ -756,7 +813,7 @@ final class AGXR_Import {
 			if (!is_wp_error($ids) && $ids) { wp_update_term_count_now($ids, $tax); }
 		}
 		if (function_exists('wc_delete_product_transients')) { wc_delete_product_transients(); }
-		if (function_exists('_wc_term_recount')) { $t = get_terms(['taxonomy' => 'product_cat', 'hide_empty' => false]); if (!is_wp_error($t)) { _wc_term_recount($t, get_taxonomy('product_cat'), true, false); } }
+		if (function_exists('wc_recount_all_terms')) { wc_recount_all_terms(); }
 		AGXR_Overlay::clear_caches();
 	}
 
@@ -776,8 +833,33 @@ final class AGXR_Import {
 		$notes = self::restore($rows, 'rolled_back');
 		global $wpdb;
 		$left = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . AGXR_Journal::table() . " WHERE state='applied'");
-		if (!$left) { self::refresh(); update_option('agxr_state', ['state' => 'rolled_back', 'at' => current_time('mysql')], false); }
+		if (!$left) { self::refresh(); $notes = array_merge($notes, self::cleanup_created()); delete_option('agxr_maps'); delete_option('agxr_held'); update_option('agxr_state', ['state' => 'rolled_back', 'at' => current_time('mysql')], false); delete_option('agxr_undo_incomplete'); }
 		return ['done' => count($rows), 'left' => $left, 'notes' => $notes];
+	}
+
+	/**
+	 * After a complete rollback: remove categories, tags, attribute values and attributes the release created that
+	 * are now unused (during the rollback they could still be in use by products that went to the trash later).
+	 */
+	static function cleanup_created() {
+		$notes = [];
+		$rows = AGXR_Journal::rows("field='__created' AND otype IN ('term','attribute') AND state='rolled_back'", [], 'DESC');
+		foreach ($rows as $r) {
+			if ($r['otype'] === 'term') {
+				list($tax) = explode(':', $r['skey'], 2);
+				$t = $r['oid'] ? get_term((int) $r['oid'], $tax) : null;
+				if (!$t || is_wp_error($t)) { continue; }
+				wp_update_term_count_now([(int) $t->term_taxonomy_id], $tax);
+				$t = get_term((int) $r['oid'], $tax);
+				if ((int) $t->count === 0 && !get_term_children((int) $t->term_id, $tax)) { wp_delete_term((int) $t->term_id, $tax); $notes[] = 'Removed unused ' . $r['skey'] . ' added by the release.'; }
+			}
+		}
+		foreach ($rows as $r) {
+			if ($r['otype'] !== 'attribute' || !$r['oid'] || !wc_get_attribute((int) $r['oid'])) { continue; }
+			$tax = wc_attribute_taxonomy_name($r['skey']);
+			if (!taxonomy_exists($tax) || !(int) wp_count_terms(['taxonomy' => $tax, 'hide_empty' => false])) { wc_delete_attribute((int) $r['oid']); $notes[] = 'Removed attribute ' . $r['skey'] . ' added by the release.'; }
+		}
+		return $notes;
 	}
 
 	/** Put the journal's "before" values back. Rows must be newest first. */
@@ -812,7 +894,12 @@ final class AGXR_Import {
 						}
 						break;
 					case 'attribute':
-						if ($r['field'] === '__created' && $r['oid']) { $notes[] = 'Attribute ' . $r['skey'] . ' created by the release was kept (remove it under Products > Attributes if unused).'; }
+						if ($r['field'] === '__created' && $r['oid']) {
+							$tax = wc_attribute_taxonomy_name($r['skey']);
+							$left = taxonomy_exists($tax) ? (int) wp_count_terms(['taxonomy' => $tax, 'hide_empty' => false]) : 0;
+							if (!$left) { wc_delete_attribute((int) $r['oid']); $notes[] = 'Removed attribute ' . $r['skey'] . ' added by the release.'; }
+							else { $notes[] = 'Kept attribute ' . $r['skey'] . ' (it still has values in use).'; }
+						}
 						break;
 					case 'attachment':
 						if ($r['field'] === '__created') { $notes[] = 'Image ' . $r['after'] . ' added by the release was kept in the media library (ID ' . $r['oid'] . ').'; }
@@ -839,7 +926,8 @@ final class AGXR_Import {
 		}
 		foreach ($objects as $id => $fields) {
 			try {
-				if (!get_post($id)) { continue; }
+				// a product the release created and this batch already moved to the trash: nothing to restore
+				if (!get_post($id) || get_post_status($id) === 'trash') { foreach ($fields as $r) { AGXR_Journal::mark($r['id'], $state); } continue; }
 				$wcp = wc_get_product($id);
 				$save = false;
 				foreach ($fields as $f => $r) {
@@ -856,6 +944,8 @@ final class AGXR_Import {
 					}
 				}
 				if ($save) { $wcp->save(); }
+				// "no image" restored: WooCommerce may store it as 0; the original simply had no value
+				if (isset($fields['prop:image']) && !(int) $fields['prop:image']['before'] && get_post_meta($id, '_thumbnail_id', true) === '0') { delete_post_meta($id, '_thumbnail_id'); }
 				if ($wcp->is_type('variation')) { WC_Product_Variable::sync($wcp->get_parent_id()); }
 				clean_post_cache($id);
 				if (function_exists('wc_delete_product_transients')) { wc_delete_product_transients($id); }

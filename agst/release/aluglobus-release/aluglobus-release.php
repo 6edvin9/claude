@@ -28,12 +28,16 @@ register_deactivation_hook(__FILE__, ['AGXR_Admin', 'deactivate']);
 
 /*
  * Storefront runtime (product template, shop pages, Elementor body overlay).
- * It shares class names with the staging test plugin, so it only loads when that plugin is not active
- * (on staging the release plugin then offers just the export and the importer self-test).
+ * - It shares class names with the staging test plugin, so it never loads while that plugin is active.
+ * - On live it loads only after the release has been applied: installing and activating the plugin changes
+ *   nothing on the site until Apply, and after a rollback the site is back on the theme's own pages.
  */
 add_action('plugins_loaded', function () {
 	AGXR_Admin::boot();
 	if (class_exists('AGST_Catalog') || !function_exists('WC')) { return; }
+	AGXR_Admin::$available = true;
+	$state = get_option('agxr_state');
+	if (!AGXR_Bundle::is_source() && (!is_array($state) || ($state['state'] ?? '') !== 'applied')) { return; }
 	require_once __DIR__ . '/runtime/catalog.php';
 	AGXR_Admin::$runtime = true;
 	AGXR_Overlay::boot();

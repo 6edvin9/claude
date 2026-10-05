@@ -66,7 +66,7 @@
 				var before = tally.items;
 				return runStep(mode, step, box, extra, tally).then(function () {
 					if (tally.items === before && !box.querySelector('.lvl-warn,.lvl-error,.lvl-block')) { box.querySelector('.agxr-body').innerHTML = '<i>No changes.</i>'; }
-					if (mode === 'apply' && (tally.block || tally.error)) { throw new Error('Stopped: an error needs attention in "' + (AGXR.labels[step] || step) + '". Already-applied steps are journaled (use Roll back to undo).'); }
+					if (mode === 'apply' && tally.block) { throw new Error('Stopped by a safety check in "' + (AGXR.labels[step] || step) + '". Already-applied steps are saved in the journal (deactivate or Roll back to undo).'); }
 				});
 			});
 		});
@@ -88,7 +88,7 @@
 		ap.disabled = true; an.disabled = true;
 		var run = 'run' + Date.now();
 		runAll('apply', $('agxr-apply-log'), { backup: 1, include_edited: $('agxr-edited').checked ? 1 : 0, run: run }).then(function (t) {
-			$('agxr-apply-log').insertAdjacentHTML('afterbegin', '<p><b>Release applied: ' + t.items + ' items, ' + t.changes + ' field changes. Warnings: ' + t.warn + '.</b></p>');
+			$('agxr-apply-log').insertAdjacentHTML('afterbegin', '<p><b>Release applied: ' + t.items + ' items, ' + t.changes + ' field changes. Items skipped with an error (left unchanged): ' + t.error + '. Warnings: ' + t.warn + '.</b></p>');
 		}).catch(function (e) { $('agxr-apply-log').insertAdjacentHTML('afterbegin', '<p class="lvl-error">' + esc(e.message) + '</p>'); }).then(function () { an.disabled = false; });
 	});
 	if (rb) rb.addEventListener('click', function () {
