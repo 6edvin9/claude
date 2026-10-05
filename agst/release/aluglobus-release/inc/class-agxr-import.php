@@ -970,8 +970,15 @@ final class AGXR_Import {
 			try {
 				// a product the release created and this batch already moved to the trash: nothing to restore
 				if (!get_post($id) || get_post_status($id) === 'trash') { foreach ($fields as $r) { AGXR_Journal::mark($r['id'], $state); } continue; }
-				if (isset($fields['tax:product_type'])) { self::set_type($id, (string) $fields['tax:product_type']['before']); }
-				$wcp = wc_get_product($id);
+				if (isset($fields['tax:product_type'])) {
+					$t = (string) $fields['tax:product_type']['before'];
+					self::set_type($id, $t);
+					// a fresh object of the restored type (a cached variable object would ignore the simple price)
+					$cls = WC_Product_Factory::get_product_classname($id, $t);
+					$wcp = new $cls($id);
+				} else {
+					$wcp = wc_get_product($id);
+				}
 				$save = false;
 				foreach ($fields as $f => $r) {
 					list($kind, $k) = explode(':', $f, 2);
