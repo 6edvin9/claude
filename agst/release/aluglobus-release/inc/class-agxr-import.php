@@ -260,9 +260,10 @@ final class AGXR_Import {
 		list($tax, $t) = self::term_row($key);
 		$r = ['label' => ($tax === 'product_cat' ? 'Category ' : $tax . ' ') . $t['name'] . ' (' . $t['slug'] . ')', 'changes' => [], 'issues' => []];
 		if (!taxonomy_exists($tax)) { $r['changes'][] = self::change('create', '', $t['slug'], 'after its attribute is created'); return $r; }
-		$live = get_term_by('slug', $t['slug'], $tax);
+		$live = AGXR_Bundle::live_term($tax, $t['slug']);
 		if (!$live) { $r['changes'][] = self::change('create', '', $t['name'] . ' under ' . ($t['parent'] ?: 'top level')); return $r; }
 		foreach (self::term_diff($tax, $t, $live) as $c) { $r['changes'][] = self::change($c[0], $c[1], $c[2]); }
+		if ($r['changes'] && $live->slug !== $t['slug']) { $r['issues'][] = self::issue('warn', 'Same category, different URL slug here ("' . $live->slug . '"); this site\'s slug and URLs are kept.'); }
 		return $r['changes'] ? $r : null;
 	}
 
@@ -282,7 +283,7 @@ final class AGXR_Import {
 		}
 		list($tax, $t) = self::term_row($key);
 		if (!taxonomy_exists($tax)) { register_taxonomy($tax, ['product']); }
-		$live = get_term_by('slug', $t['slug'], $tax);
+		$live = AGXR_Bundle::live_term($tax, $t['slug']);
 		$label = $t['name'] . ' (' . $t['slug'] . ')';
 		if (!$live) {
 			$parent = $t['parent'] === '' ? 0 : AGXR_Bundle::term($tax, $t['parent']);
@@ -310,7 +311,7 @@ final class AGXR_Import {
 			$res = wp_update_term($live->term_id, $tax, $args);
 			if (is_wp_error($res)) { self::undo_rows($jids); throw new RuntimeException($res->get_error_message()); }
 		}
-		if (get_term($live->term_id, $tax)->slug !== $t['slug']) { self::undo_rows($jids); throw new RuntimeException('Category slug changed; undone.'); }
+		if (get_term($live->term_id, $tax)->slug !== $live->slug) { self::undo_rows($jids); throw new RuntimeException('Category slug changed; undone.'); }
 		foreach ($jids as $j) { AGXR_Journal::mark($j, 'applied'); }
 		return ['label' => $label, 'changes' => array_map(function ($c) { return self::change($c[0], $c[1], $c[2]); }, $diff), 'issues' => []];
 	}
@@ -334,14 +335,29 @@ final class AGXR_Import {
 		return 0;
 	}
 
+	/** Only a simple product may become variable (staging added colour options to a few simple products). */
+	static function convertible($from, $to) { return $from === 'simple' && $to === 'variable'; }
+
+	static function set_type($id, $type) {
+		wp_set_object_terms((int) $id, $type, 'product_type');
+		wp_cache_delete('woocommerce_product_type_' . (int) $id, 'products');
+		if (class_exists('WC_Cache_Helper')) { WC_Cache_Helper::invalidate_cache_group('product_' . (int) $id); }
+		clean_post_cache((int) $id);
+		if (function_exists('wc_delete_product_transients')) { wc_delete_product_transients((int) $id); }
+	}
+
 	/** Desired value of every product field (live ids/URLs). */
 	static function desired($p, $variation = false) {
 		$w = $p['wc'];
 		$d = [];
 		foreach (self::PROPS as $k) { if (array_key_exists($k, $w)) { $d['prop:' . $k] = $w[$k]; } }
 		$d['prop:image'] = AGXR_Bundle::att((int) $w['image']);
+		// attribute values in this site's slugs (same value, possibly another slug)
+		$vslug = function ($attr, $val) { return strpos((string) $attr, 'pa_') === 0 ? AGXR_Bundle::live_slug($attr, (string) $val) : $val; };
 		if ($variation) {
-			$d['prop:attributes'] = (array) $w['attributes'];
+			$va = [];
+			foreach ((array) $w['attributes'] as $ak => $av) { $va[$ak] = $vslug($ak, $av); }
+			$d['prop:attributes'] = $va;
 			$d['prop:description'] = AGXR_Bundle::urls((string) $w['description']);
 			$d['post:post_status'] = $p['status'];
 			$d['post:menu_order'] = (int) $p['menu_order'];
@@ -349,10 +365,19 @@ final class AGXR_Import {
 			foreach (['catalog_visibility', 'featured', 'sold_individually', 'reviews_allowed', 'purchase_note'] as $k) { $d['prop:' . $k] = $w[$k]; }
 			$d['prop:shipping_class'] = (string) $w['shipping_class'];
 			$d['prop:gallery'] = array_values(array_filter(array_map(function ($i) { return AGXR_Bundle::att((int) $i); }, (array) $w['gallery'])));
-			$d['prop:cats'] = (array) $w['cats'];
+			$cats = array_map(function ($s) { return AGXR_Bundle::live_slug('product_cat', $s); }, (array) $w['cats']);
+			sort($cats);
+			$d['prop:cats'] = $cats;
 			$d['prop:tags'] = (array) $w['tags'];
-			$d['prop:attributes'] = (array) $w['attributes'];
-			$d['prop:default_attributes'] = (array) $w['default_attributes'];
+			$pa = [];
+			foreach ((array) $w['attributes'] as $a) {
+				if (!empty($a['tax'])) { $a['options'] = array_map(function ($o) use ($a, $vslug) { return $vslug($a['name'], $o); }, (array) $a['options']); sort($a['options']); }
+				$pa[] = $a;
+			}
+			$d['prop:attributes'] = $pa;
+			$da = [];
+			foreach ((array) $w['default_attributes'] as $ak => $av) { $da[$ak] = $vslug($ak, $av); }
+			$d['prop:default_attributes'] = $da;
 			foreach ($p['post'] as $f => $v) { $d['post:' . $f] = in_array($f, ['post_content', 'post_excerpt'], true) ? AGXR_Bundle::urls($v) : $v; }
 		}
 		foreach ((array) $p['meta'] as $k => $v) {
@@ -477,7 +502,10 @@ final class AGXR_Import {
 		}
 		AGXR_Bundle::set_map('post', $p['sid'], $id);
 		$wcp = wc_get_product($id);
-		if ($wcp->get_type() !== $p['type']) { $r['issues'][] = self::issue('error', 'Product type here is ' . $wcp->get_type() . ', on staging ' . $p['type'] . ': skipped.'); return $r; }
+		if ($wcp->get_type() !== $p['type']) {
+			if (!self::convertible($wcp->get_type(), $p['type'])) { $r['issues'][] = self::issue('error', 'Product type here is ' . $wcp->get_type() . ', on staging ' . $p['type'] . ': skipped.'); return $r; }
+			$r['changes'][] = self::change('product type', $wcp->get_type(), $p['type'], 'gets its options/variations from staging');
+		}
 		if (!$p['new'] && ($ed = self::edited_on_live($id))) { $r['issues'][] = self::issue('warn', 'Edited on this site after the staging copy was made (' . $ed . '). Held back unless you tick "include products edited here since the copy".'); }
 		foreach (self::diff($id, self::desired($p)) as $c) { $r['changes'][] = self::change($c[0], $c[2], $c[3]); }
 		return $r['changes'] || $r['issues'] ? $r : null;
@@ -519,9 +547,18 @@ final class AGXR_Import {
 			return ['label' => $label, 'changes' => [self::change('created', '', '/' . $p['slug'] . '/ (' . $status . ')')], 'issues' => []];
 		}
 		AGXR_Bundle::set_map('post', $p['sid'], $id);
-		if (wc_get_product($id)->get_type() !== $p['type']) { throw new RuntimeException('Product type differs: skipped.'); }
+		$type = wc_get_product($id)->get_type();
+		if ($type !== $p['type'] && !self::convertible($type, $p['type'])) { throw new RuntimeException('Product type differs (' . $type . ' here, ' . $p['type'] . ' on staging): skipped.'); }
 		if (!$p['new'] && self::edited_on_live($id) && empty(self::$opts['include_edited'])) { return ['label' => $label, 'changes' => [], 'issues' => [self::issue('warn', 'Held back: edited on this site after the staging copy.')]]; }
-		$done = self::write($id, self::desired($p), 'products', $p['sid'], false);
+		$tj = 0;
+		if ($type !== $p['type']) { $tj = AGXR_Journal::record(self::$run, 'products', 'product', $id, $p['sid'], 'tax:product_type', true, $type, $p['type']); self::set_type($id, $p['type']); }
+		try {
+			$done = self::write($id, self::desired($p), 'products', $p['sid'], false);
+		} catch (Throwable $e) {
+			if ($tj) { self::undo_rows([$tj]); }
+			throw $e;
+		}
+		if ($tj) { AGXR_Journal::mark($tj, 'applied'); array_unshift($done, self::change('product type', $type, $p['type'])); }
 		return $done ? ['label' => $label, 'changes' => $done, 'issues' => []] : null;
 	}
 
@@ -594,7 +631,9 @@ final class AGXR_Import {
 		$r = ['label' => $label, 'changes' => [], 'issues' => []];
 		try { $pid = self::product_target($p); } catch (Throwable $e) { return null; }
 		if (!$pid) { $r['changes'][] = self::change('create', '', 'with its new product'); return $r; }
-		$id = self::variation_target($pid, $v);
+		$ptype = wc_get_product($pid)->get_type();
+		if ($ptype !== 'variable' && !self::convertible($ptype, $p['type'])) { return null; }
+		$id = $ptype === 'variable' ? self::variation_target($pid, $v) : 0;
 		if (!$id) { $r['changes'][] = self::change('create', '', $v['wc']['regular_price'] !== '' ? '$' . $v['wc']['regular_price'] : 'no price'); return $r; }
 		foreach (self::diff($id, self::desired($v, true)) as $c) { $r['changes'][] = self::change($c[0], $c[2], $c[3]); }
 		return $r['changes'] ? $r : null;
@@ -608,6 +647,7 @@ final class AGXR_Import {
 		if (!$p['new'] && self::edited_on_live($pid) && empty(self::$opts['include_edited']) && !AGXR_Journal::created('product', $p['sid'])) {
 			return ['label' => $label, 'changes' => [], 'issues' => [self::issue('warn', 'Held back with its product (edited here after the copy).')]];
 		}
+		if (!wc_get_product($pid)->is_type('variable')) { return ['label' => $label, 'changes' => [], 'issues' => [self::issue('warn', 'Not added: its product is not a variable product here (it was skipped or held back).')]]; }
 		$id = self::variation_target($pid, $v);
 		if (!$id) {
 			$var = new WC_Product_Variation();
@@ -930,10 +970,12 @@ final class AGXR_Import {
 			try {
 				// a product the release created and this batch already moved to the trash: nothing to restore
 				if (!get_post($id) || get_post_status($id) === 'trash') { foreach ($fields as $r) { AGXR_Journal::mark($r['id'], $state); } continue; }
+				if (isset($fields['tax:product_type'])) { self::set_type($id, (string) $fields['tax:product_type']['before']); }
 				$wcp = wc_get_product($id);
 				$save = false;
 				foreach ($fields as $f => $r) {
 					list($kind, $k) = explode(':', $f, 2);
+					if ($kind === 'tax') { continue; }
 					if ($kind === 'meta') {
 						if ($r['existed']) { update_post_meta($id, $k, wp_slash($r['before'])); } else { delete_post_meta($id, $k); }
 						if (strpos($k, '_agx_el_') === 0) { AGXR_Overlay::forget($id); }

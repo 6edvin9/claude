@@ -44,7 +44,26 @@ final class AGXR_Bundle {
 	}
 	static function att($sid) { if (!$sid) { return 0; } $m = self::maps(); return (int) ($m['att'][(string) $sid] ?? 0); }
 	static function post($sid) { if (!$sid) { return 0; } $m = self::maps(); return (int) ($m['post'][(string) $sid] ?? 0); }
-	static function term($tax, $slug) { $t = get_term_by('slug', $slug, $tax); return $t && !is_wp_error($t) ? (int) $t->term_id : 0; }
+	/** Categories and attribute values created on staging have ids from here on; lower ids existed on live at copy time. */
+	const FIRST_STAGING_TERM = 617;
+
+	/**
+	 * This site's term for a bundle term. Terms that already existed when staging was copied are matched by id,
+	 * because their URL slug can differ between the sites (live's slug is always kept); new terms by slug.
+	 */
+	static function live_term($tax, $slug) {
+		static $sids = null;
+		if ($sids === null) {
+			$sids = [];
+			try { foreach (self::load()['terms'] as $tx => $list) { foreach ($list as $t) { $sids[$tx][$t['slug']] = (int) $t['sid']; } } } catch (Throwable $e) {}
+		}
+		$id = $sids[$tax][$slug] ?? 0;
+		if ($id && $id < self::FIRST_STAGING_TERM) { $t = get_term($id, $tax); if ($t && !is_wp_error($t)) { return $t; } }
+		$t = get_term_by('slug', $slug, $tax);
+		return $t && !is_wp_error($t) ? $t : null;
+	}
+	static function term($tax, $slug) { $t = self::live_term($tax, $slug); return $t ? (int) $t->term_id : 0; }
+	static function live_slug($tax, $slug) { $t = self::live_term($tax, $slug); return $t ? $t->slug : $slug; }
 
 	/* ------------------------------------------------------------------ URL and id rewriting */
 

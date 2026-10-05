@@ -20,12 +20,27 @@
 	function stepBox(root, step) {
 		var d = document.createElement('div');
 		d.className = 'agxr-step';
+		d.setAttribute('data-step', AGXR.labels[step] || step);
 		d.innerHTML = '<h3>' + esc(AGXR.labels[step] || step) + ' <small class="agxr-count"></small></h3><div class="agxr-body"></div>';
 		root.appendChild(d);
 		return d;
 	}
 
+	var REPORT = [];
+	function csvCell(v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+	function downloadReport() {
+		var rows = [['Step', 'Item', 'Field / issue', 'Current value', 'New value', 'Note']];
+		REPORT.forEach(function (x) {
+			(x.r.issues || []).forEach(function (i) { rows.push([x.step, x.r.label, i.level.toUpperCase(), '', '', i.text]); });
+			(x.r.changes || []).forEach(function (c) { rows.push([x.step, x.r.label, c.field, c.before, c.after, c.note || '']); });
+		});
+		var blob = new Blob(['\ufeff' + rows.map(function (r) { return r.map(csvCell).join(','); }).join('\n')], { type: 'text/csv;charset=utf-8' });
+		var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'catalog-release-analysis.csv'; document.body.appendChild(a); a.click(); a.remove();
+	}
+
 	function render(box, results) {
+		var stepName = box.getAttribute('data-step') || '';
+		results.forEach(function (r) { REPORT.push({ step: stepName, r: r }); });
 		var body = box.querySelector('.agxr-body');
 		results.forEach(function (r) {
 			var html = '<div style="margin:6px 0"><b>' + esc(r.label) + '</b>';
@@ -76,9 +91,11 @@
 	var an = $('agxr-analyze'), ap = $('agxr-apply'), rb = $('agxr-rollback'), ex = $('agxr-export'), st = $('agxr-selftest');
 	if (an) an.addEventListener('click', function () {
 		an.disabled = true; ap.disabled = true;
+		REPORT = [];
 		runAll('analyze', $('agxr-report'), {}).then(function (t) {
 			var msg = 'Analysis done: ' + t.items + ' items with ' + t.changes + ' field changes. Blocking: ' + t.block + ', errors: ' + t.error + ', warnings: ' + t.warn + '.';
-			$('agxr-report').insertAdjacentHTML('afterbegin', '<p><b>' + esc(msg) + '</b></p>');
+			$('agxr-report').insertAdjacentHTML('afterbegin', '<p><b>' + esc(msg) + '</b> <button type="button" class="button" id="agxr-csv">Download report (CSV)</button></p>');
+			$('agxr-csv').addEventListener('click', downloadReport);
 			return call({ op: 'analyzed', summary: JSON.stringify(t) }).then(function () { ap.disabled = t.block > 0; });
 		}).catch(function (e) { $('agxr-report').insertAdjacentHTML('afterbegin', '<p class="lvl-error">' + esc(e.message) + '</p>'); }).then(function () { an.disabled = false; });
 	});
