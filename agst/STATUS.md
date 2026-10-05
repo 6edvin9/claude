@@ -1,3 +1,24 @@
+# Status — live release plugin (2026-10-05)
+- Built `release/aluglobus-release` (see release/README.md):
+  - Design layer reverts on deactivation: Elementor bodies are kept in `_agx_el_*`, and live's originals are never written.
+  - Store data is journaled before every write (table `wp_agxr_journal`) and can be rolled back.
+  - Admin page WooCommerce > Catalog Release offers Analyze (read-only), Apply (batched, per-item undo, URL check) and Roll back.
+- Bundle exported from staging:
+  - 388 products (65 new) and 537 variations
+  - 144 page bodies and 144 terms
+  - 328 redirects, 2 WPCode snippets, 4 settings
+  - 1023 media references; 89 new files (10.8 MB) are packaged
+- Staging test:
+  - The release runtime renders product pages the same as the staging plugin (same sections, photos, videos and related products).
+  - Analyze on staging finds only the 720 expected overlay fields (144 bodies × 5) and zero other differences, so the importer is idempotent.
+- Not done (blocked by the session's permission check; needs the owner):
+  - An apply + rollback round trip with deliberately altered staging data.
+  - Re-activating the staging plugin. Staging currently runs on the release plugin (staging plugin inactive; pages look the same).
+- Out of scope of the release:
+  - staging-only pages, menus and "projects"
+  - site settings
+  - the maintenance plugin (now active on staging)
+
 # Status — deep design QA (v2.4, ASSET_VERSION 2.4.3)
 Owner asked for a designer + user pass before deciding on go-live (empty half-columns, spacing, colours). Fixed on staging:
 - Two-column sections on desktop: title/intro left (sticky), table/list/FAQ right, no blank half (spec tables, FAQ, text).

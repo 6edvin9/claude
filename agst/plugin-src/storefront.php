@@ -2553,3 +2553,19 @@ add_action('wp_ajax_agst_media_use_originals',function(){if(!current_user_can('m
   foreach(array_map('intval',$m['images']) as $id){$src=(int)get_post_meta($id,'_agst_clean_of',true);if($src&&get_post_type($src)==='attachment'){$map[(string)$src]=['alt'=>(string)get_post_meta($id,'_wp_attachment_image_alt',true),'cap'=>(string)wp_get_attachment_caption($id)];$new[]=$src;$sw++;}else $new[]=$id;}
   $m['images']=array_values(array_unique($new));$m['originals']=1;update_post_meta($pid,'_agst_media',$m);$out[$pid]=$sw;}
  update_option('agst_media_text',wp_json_encode($map),false);wp_send_json_success(['products'=>count($out),'swapped'=>array_sum($out),'texts'=>count($map)]);});
+// Read-only inventory for the live release (what staging changed).
+add_action('wp_ajax_agst_inventory',function(){if(!current_user_can('manage_woocommerce')||!wp_verify_nonce((string)($_POST['nonce']??''),'wp_rest'))wp_send_json_error('forbidden',403);global $wpdb;$o=[];
+ $o['status']=$wpdb->get_results("SELECT post_type,post_status,COUNT(*) n,MIN(ID) mn,MAX(ID) mx FROM {$wpdb->posts} WHERE post_type IN('product','product_variation') GROUP BY post_type,post_status",ARRAY_A);
+ $o['first_staging_product']=$wpdb->get_row("SELECT ID,post_date FROM {$wpdb->posts} WHERE post_type IN('product','product_variation') AND post_date>='2026-09-15' ORDER BY ID ASC LIMIT 1",ARRAY_A);
+ $o['last_before']=$wpdb->get_results("SELECT post_type,MAX(ID) mx,MAX(post_date) d FROM {$wpdb->posts} WHERE post_date<'2026-09-15' GROUP BY post_type ORDER BY mx DESC LIMIT 12",ARRAY_A);
+ $o['posts_after_by_type']=$wpdb->get_results("SELECT post_type,post_status,COUNT(*) n,MIN(post_date) d0 FROM {$wpdb->posts} WHERE post_date>='2026-09-15' GROUP BY post_type,post_status",ARRAY_A);
+ $o['meta_keys']=$wpdb->get_results("SELECT m.meta_key k,COUNT(*) n FROM {$wpdb->postmeta} m JOIN {$wpdb->posts} p ON p.ID=m.post_id WHERE p.post_type IN('product','product_variation') AND (m.meta_key LIKE '\\_agst%' OR m.meta_key LIKE '\\_yoast%' OR m.meta_key LIKE '\\_elementor%' OR m.meta_key LIKE '\\_agx%') GROUP BY m.meta_key ORDER BY n DESC",ARRAY_A);
+ $o['options']=$wpdb->get_results("SELECT option_name n,LENGTH(option_value) len,autoload FROM {$wpdb->options} WHERE option_name LIKE 'agst%' ORDER BY option_name",ARRAY_A);
+ $o['terms']=$wpdb->get_results("SELECT t.term_id,t.slug,t.name,tt.parent,tt.count FROM {$wpdb->terms} t JOIN {$wpdb->term_taxonomy} tt ON tt.term_id=t.term_id WHERE tt.taxonomy='product_cat' ORDER BY t.term_id",ARRAY_A);
+ $o['attr_terms_after']=$wpdb->get_results("SELECT tt.taxonomy,t.term_id,t.slug FROM {$wpdb->terms} t JOIN {$wpdb->term_taxonomy} tt ON tt.term_id=t.term_id WHERE tt.taxonomy LIKE 'pa\\_%' AND t.term_id>600 ORDER BY t.term_id",ARRAY_A);
+ $o['termmeta']=$wpdb->get_results("SELECT meta_key,COUNT(*) n FROM {$wpdb->termmeta} GROUP BY meta_key",ARRAY_A);
+ $t=$wpdb->prefix.'redirection_groups';if($wpdb->get_var("SHOW TABLES LIKE '$t'")===$t){$o['redir_groups']=$wpdb->get_results("SELECT g.id,g.name,COUNT(i.id) n FROM $t g LEFT JOIN {$wpdb->prefix}redirection_items i ON i.group_id=g.id GROUP BY g.id",ARRAY_A);$o['redir_max']=$wpdb->get_var("SELECT MAX(id) FROM {$wpdb->prefix}redirection_items");$o['redir_cols']=$wpdb->get_col("SHOW COLUMNS FROM {$wpdb->prefix}redirection_items");}
+ $o['wpcode']=$wpdb->get_results("SELECT ID,post_type,post_title,post_status,post_modified FROM {$wpdb->posts} WHERE ID IN(39281,39726,48849,30518)",ARRAY_A);
+ $o['att_after']=$wpdb->get_row("SELECT COUNT(*) n,MIN(ID) mn,MAX(ID) mx FROM {$wpdb->posts} WHERE post_type='attachment' AND post_date>='2026-09-15'",ARRAY_A);
+ $o['modified_after']=$wpdb->get_results("SELECT post_type,COUNT(*) n FROM {$wpdb->posts} WHERE post_modified>='2026-09-15' AND post_date<'2026-09-15' GROUP BY post_type",ARRAY_A);
+ wp_send_json_success($o);});
