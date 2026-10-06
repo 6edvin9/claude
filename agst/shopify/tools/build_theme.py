@@ -68,6 +68,19 @@ sc = json.load(open(p))
 sc[0]['theme_name'] = sc[0].get('theme_name', 'Dawn')
 json.dump(sc, open(p, 'w'), indent=2)
 
+# Scope the v30 CSS under #MainContent with repeated classes so the store-wide dark theme rules
+# (body:not(.template-index) #MainContent p / a:not(.button) ...) cannot override it.
+def scope(path, cls, reset):
+    css = open(path).read()
+    css = re.sub(r'(^|[,{}]\s*)\.%s(?=[\s{.:\[,)])' % re.escape(cls), lambda m: m.group(1) + '#MainContent .%s.%s.%s' % (cls, cls, cls), css, flags=re.M)
+    css = re.sub(r'(^|[,{}]\s*)\.(agd-buyhead|agd-soon)', lambda m: m.group(1) + '#MainContent [id^=ProductInfo] .' + m.group(2), css, flags=re.M)
+    open(path, 'w').write(reset + css)
+scope(os.path.join(DST, 'assets', 'ag-catalog-v30.css'), 'agc',
+      '#MainContent .agc.agc.agc :is(h1,h2,h3,p,a,span,strong,em,li,del,ins,small,label,nav){color:inherit}\n')
+scope(os.path.join(DST, 'assets', 'ag-desc-v30.css'), 'agd-wrap',
+      '#MainContent .agd-wrap.agd-wrap.agd-wrap :is(h2,h3,h4,p,a,span,strong,em,li,td,th,figcaption,summary,blockquote){color:inherit}\n'
+      '')
+
 out = os.path.join(HERE, 'out', 'aluglobus-shopify-theme-v30-catalog.zip')
 if os.path.exists(out):
     os.remove(out)

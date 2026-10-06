@@ -65,7 +65,7 @@ const coll = (handle, tag) => {
   return { handle, title: sys[handle] || 'All', url: '/collections/' + handle, products: ps, products_count: ps.length, description: '', image: null };
 };
 const base = { routes: { root_url: '/', all_products_collection_url: '/collections/all', collections_url: '/collections', search_url: '/search' }, section: { settings: { shop_heading: 'Everything on our current price list.', shop_lead: 'Choose your system, then the part you need. Prices shown are base prices — bundle and contractor discounts are available.' } }, search: { terms: '' }, collections: {} };
-const page = (body) => `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;font-family:Assistant,Arial,sans-serif;background:#fff}.visually-hidden{position:absolute;clip:rect(0 0 0 0);width:1px;height:1px;overflow:hidden}</style></head><body>${body}</body></html>`;
+const A='../theme_out/assets/';const page = (body, tpl='collection') => `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="${A}base.css"><link rel="stylesheet" href="${A}aluglobus-store.css"><link rel="stylesheet" href="${A}ag-grid-fix-v12.css">${tpl==='product'?`<link rel="stylesheet" href="${A}ag-product-page-v12.css"><link rel="stylesheet" href="${A}ag-product-v14.css">`:''}<style>body{margin:0;font-family:Assistant,Arial,sans-serif}</style></head><body class="template-${tpl}"><main id="MainContent">${body}</main></body></html>`;
 (async () => {
   const out = path.resolve(__dirname, '../preview'); fs.mkdirSync(out, { recursive: true });
   const tpl = fs.readFileSync(path.join(T, 'sections', 'ag-catalog.liquid'), 'utf8');
@@ -82,7 +82,7 @@ const page = (body) => `<!doctype html><html><head><meta charset="utf-8"><meta n
     const p = byHandle[h];
     const head = await engine.parseAndRender(hdr, { product: p });
     const body = await engine.parseAndRender(sec, { product: p, section: { id: 'x' } });
-    fs.writeFileSync(path.join(out, 'product-' + h.slice(0, 30) + '.html'), page(`<link rel="stylesheet" href="../theme_out/assets/ag-desc-v30.css"><div style="background:#0b0c0e;padding:30px;max-width:560px">${head}</div>${body}`));
+    fs.writeFileSync(path.join(out, 'product-' + h.slice(0, 30) + '.html'), page(`<link rel="stylesheet" href="../theme_out/assets/ag-desc-v30.css"><div id="ProductInfo-x" style="background:#0b0c0e;padding:30px;max-width:560px">${head}</div>${body}`,'product'));
   }
   console.log('ok');
 })().catch(e => { console.error(e); process.exit(1); });
