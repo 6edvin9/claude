@@ -68,6 +68,40 @@ sc = json.load(open(p))
 sc[0]['theme_name'] = sc[0].get('theme_name', 'Dawn')
 json.dump(sc, open(p, 'w'), indent=2)
 
+# Store goes live: undo the quote-only mode (hidden add-to-cart / buy-now / checkout).
+p = os.path.join(DST, 'assets', 'base.css')
+s = open(p).read()
+kill = """/* Kill any leftover buy/add/checkout UI */
+button[name="add"],
+.shopify-payment-button,
+.shopify-payment-button__button,
+button[name="checkout"],
+.cart__submit,
+.cart__checkout,
+.quick-add__submit,
+.product-form__submit { display:none !important; }"""
+assert s.count(kill) == 1
+s = s.replace(kill, "/* Buy, add-to-cart and checkout buttons are visible (quote-only mode removed in v30). */")
+open(p, 'w').write(s)
+
+CHECKOUT = """<button type="submit" id="{id}" class="cart__checkout-button button" name="checkout"{{% if cart == empty %}} disabled{{% endif %}} form="{form}">
+            {{{{ 'sections.cart.checkout' | t }}}}
+          </button>
+          """
+p = os.path.join(DST, 'sections', 'main-cart-footer.liquid')
+s = open(p).read()
+old = "                {% render 'contact-cta' %}\n              </div>\n\n              {%- comment -%}\n                Removed dynamic checkout buttons:\n                <div class=\"cart__dynamic-checkout-buttons additional-checkout-buttons\">\n                  {{ content_for_additional_checkout_buttons }}\n                </div>\n              {%- endcomment -%}"
+assert s.count(old) == 1, 'cart footer'
+s = s.replace(old, "                " + CHECKOUT.format(id='checkout', form='cart') + "{% render 'contact-cta' %}\n              </div>\n\n              {%- if additional_checkout_buttons -%}\n                <div class=\"cart__dynamic-checkout-buttons additional-checkout-buttons\">\n                  {{ content_for_additional_checkout_buttons }}\n                </div>\n              {%- endif -%}")
+open(p, 'w').write(s)
+
+p = os.path.join(DST, 'snippets', 'cart-drawer.liquid')
+s = open(p).read()
+old = "          {% render 'contact-cta' %}\n        </div>"
+assert s.count(old) == 1, 'drawer'
+s = s.replace(old, "          " + CHECKOUT.format(id='CartDrawer-Checkout', form='CartDrawer-Form') + "{% render 'contact-cta' %}\n        </div>")
+open(p, 'w').write(s)
+
 # Scope the v30 CSS under #MainContent with repeated classes so the store-wide dark theme rules
 # (body:not(.template-index) #MainContent p / a:not(.button) ...) cannot override it.
 def scope(path, cls, reset):
