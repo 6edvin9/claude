@@ -1,0 +1,5 @@
+<nav class="agc-systems" aria-label="Product systems">
+  {%- for h in sys_handles -%}
+    <a href="{{ routes.collections_url }}/{{ h }}"{% if h == current %} aria-current="page"{% endif %}>{{ sys_titles[forloop.index0] }}</a>
+  {%- endfor -%}
+</nav>

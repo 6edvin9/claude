@@ -1,0 +1,6 @@
+<form class="agc-search" role="search" method="get" action="{{ routes.search_url }}">
+  <label class="visually-hidden" for="agc-s">Search products</label>
+  <input id="agc-s" type="search" name="q" value="{{ search.terms | escape }}" placeholder="Search systems, sizes, colours…">
+  <input type="hidden" name="type" value="product">
+  <button type="submit">Search</button>
+</form>

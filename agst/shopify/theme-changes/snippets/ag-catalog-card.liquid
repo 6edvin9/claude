@@ -1,0 +1,58 @@
+{%- comment -%} Product card used on the shop, system and group pages (same card as the website). {%- endcomment -%}
+{%- liquid
+  assign agc_colors = ''
+  for agc_option in product.options_with_values
+    assign agc_on = agc_option.name | downcase
+    if agc_on contains 'color' or agc_on contains 'colour' or agc_on contains 'finish'
+      assign agc_colors = agc_option.values | join: '|'
+    endif
+  endfor
+  assign agc_soon = ''
+  for agc_tag in product.tags
+    if agc_tag contains 'Coming soon:'
+      assign agc_soon = agc_tag | remove: 'Coming soon:' | strip
+    endif
+  endfor
+  assign agc_swatch_map = 'black:#202222|bronze:#79634b|white:#f3f0e9|sand:#c6b69a|clay:#a8705a|gray:#8c9091|grey:#8c9091|walnut:#5b3d2b|ipe:#6b4a33|teak:#8a5a36|oak:#b88a55|custom:conic-gradient(#e74,#fc3,#4b8,#39f,#e74)' | split: '|'
+-%}
+<article class="agc-card">
+  <a class="agc-card-media" href="{{ product.url }}" tabindex="-1" aria-hidden="true">
+    {%- if product.featured_image -%}
+      {{ product.featured_image | image_url: width: 600 | image_tag: loading: 'lazy', widths: '300, 450, 600', sizes: '(min-width: 1100px) 300px, (min-width: 760px) 33vw, 50vw', alt: product.title }}
+    {%- else -%}
+      {{ 'product-1' | placeholder_svg_tag }}
+    {%- endif -%}
+    {%- if agc_soon != blank -%}<span class="agc-badge agc-badge-soon">{% if agc_soon == 'all colors' %}Coming soon{% else %}{{ agc_soon }} coming soon{% endif %}</span>{%- endif -%}
+  </a>
+  <div class="agc-card-body">
+    <h3 class="agc-card-title" title="{{ product.title | escape }}"><a href="{{ product.url }}">{{ product.title | escape }}</a></h3>
+    {%- if agc_colors != blank -%}
+      {%- assign agc_color_list = agc_colors | split: '|' -%}
+      <div class="agc-swatches" aria-label="Available colours: {{ agc_color_list | join: ', ' | escape }}">
+        {%- for agc_c in agc_color_list limit: 6 -%}
+          {%- assign agc_cn = agc_c | downcase -%}
+          {%- assign agc_bg = '#b9bcbb' -%}
+          {%- for agc_pair in agc_swatch_map -%}
+            {%- assign agc_key = agc_pair | split: ':' | first -%}
+            {%- if agc_cn contains agc_key -%}{%- assign agc_bg = agc_pair | remove_first: agc_key | remove_first: ':' -%}{%- break -%}{%- endif -%}
+          {%- endfor -%}
+          <span title="{{ agc_c | escape }}" style="background:{{ agc_bg }}"></span>
+        {%- endfor -%}
+        <em>{{ agc_color_list.size }} {% if agc_color_list.size == 1 %}colour{% else %}colours{% endif %}</em>
+      </div>
+    {%- else -%}
+      <div class="agc-swatches"></div>
+    {%- endif -%}
+    <div class="agc-card-foot">
+      <div class="agc-price">
+        {%- if product.price_varies -%}
+          From&nbsp;{{ product.price_min | money }}
+        {%- else -%}
+          {%- if product.compare_at_price > product.price -%}<del>{{ product.compare_at_price | money }}</del>{%- endif -%}
+          <ins>{{ product.price | money }}</ins>
+        {%- endif -%}
+      </div>
+      <a class="agc-card-btn" href="{{ product.url }}">{% if product.has_only_default_variant %}View product{% else %}Choose options{% endif %}<span aria-hidden="true">&rarr;</span></a>
+    </div>
+  </div>
+</article>

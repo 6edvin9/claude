@@ -1,0 +1,44 @@
+{%- comment -%}
+  Buy-panel header for products synced from the website: category kicker, lead and key facts
+  (read from the data-kicker / data-chips attributes and the lead paragraph of the description),
+  plus the "coming soon" notice from the "Coming soon: ..." tag.
+  Products without website content keep the previous v14 header.
+{%- endcomment -%}
+{%- unless product.description contains 'class="agd"' -%}
+  {%- render 'ag-product-header-v14', product: product, ag_group: ag_group -%}
+{%- else -%}
+{%- liquid
+  assign agd_desc = product.description
+  assign agd_kicker = ''
+  assign agd_chips = ''
+  assign agd_lead = ''
+  if agd_desc contains 'data-kicker="'
+    assign agd_kicker = agd_desc | split: 'data-kicker="' | last | split: '"' | first
+  endif
+  if agd_desc contains 'data-chips="'
+    assign agd_chips = agd_desc | split: 'data-chips="' | last | split: '"' | first
+  endif
+  if agd_desc contains '<p class="agd-lead">'
+    assign agd_lead = agd_desc | split: '<p class="agd-lead">' | last | split: '</p>' | first
+  endif
+  assign agd_soon = ''
+  for agd_tag in product.tags
+    if agd_tag contains 'Coming soon:'
+      assign agd_soon = agd_tag | remove: 'Coming soon:' | strip
+    endif
+  endfor
+-%}
+<div class="agd-buyhead">
+  {%- if agd_kicker != blank -%}<span class="agd-buyhead__kicker">{{ agd_kicker }}</span>{%- endif -%}
+  {%- if agd_lead != blank -%}<p class="agd-buyhead__lead">{{ agd_lead }}</p>{%- endif -%}
+  {%- if agd_chips != blank -%}
+    <ul class="agd-buyhead__chips">
+      {%- assign agd_chip_list = agd_chips | split: '|' -%}
+      {%- for agd_chip in agd_chip_list -%}<li>{{ agd_chip }}</li>{%- endfor -%}
+    </ul>
+  {%- endif -%}
+</div>
+{%- if agd_soon != blank -%}
+  <p class="agd-soon"><strong>{% if agd_soon == 'all colors' %}Coming soon{% else %}{{ agd_soon }} coming soon{% endif %}</strong> &mdash; please confirm availability with us before ordering.</p>
+{%- endif -%}
+{%- endunless -%}
