@@ -158,7 +158,20 @@ def product_rows(p):
         'Status': status,
     })
     # images: page gallery first, then any variation images not already in it
-    gallery = [(u.replace('https://globusgates.online/wp-content/uploads/', STAGING), alt) for u, alt in c['gallery']]
+    # product photos only: the WooCommerce main image + product gallery (the website's page hero also
+    # mixes in project / installation photos, those stay in the description)
+    alt_main = html.unescape(c['title'] or p['post']['post_title'])
+    gallery = []
+    for i in [w.get('image')] + list(w.get('gallery') or []):
+        u = img_url(i)
+        if u and u not in [g[0] for g in gallery]:
+            m = media.get(int(i))
+            a = (m.get('alt') or '').strip() if m else ''
+            if not a or '|' in a or re.match(r'^(photo|img|image|dsc|whatsapp|pdf)[\s_-]*\d', a, re.I):
+                a = alt_main
+            gallery.append((u, a))
+    if not gallery:
+        gallery = [(u.replace('https://globusgates.online/wp-content/uploads/', STAGING), alt) for u, alt in c['gallery'][:1]]
     variants = []
     if p['type'] == 'variable':
         attrs, names = option_values(p)
@@ -266,6 +279,11 @@ def write(path, rs):
 
 
 write(os.path.join(OUT, 'shopify-products-all.csv'), all_rows)
+IMG_COLS = ['Handle', 'Title', 'Option1 Name', 'Option1 Value', 'Option2 Name', 'Option2 Value', 'Option3 Name', 'Option3 Value',
+            'Image Src', 'Image Position', 'Image Alt Text', 'Variant Image']
+img_rows = [{k: r[k] for k in IMG_COLS} for r in all_rows if r['Handle'] in pub_by_slug]
+with open(os.path.join(OUT, 'shopify-product-images-fix.csv'), 'w', newline='', encoding='utf-8') as f:
+    wr = csv.DictWriter(f, fieldnames=IMG_COLS); wr.writeheader(); wr.writerows(img_rows)
 write(os.path.join(OUT, 'shopify-products-test-3.csv'), test_rows)
 with open(os.path.join(OUT, 'shopify-change-report.csv'), 'w', newline='', encoding='utf-8') as f:
     wr = csv.writer(f)
