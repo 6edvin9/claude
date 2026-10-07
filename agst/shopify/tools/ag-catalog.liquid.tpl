@@ -99,7 +99,7 @@
               {%- endfor -%}
               {%- if gn == 0 -%}{%- continue -%}{%- endif -%}
               {%- assign gi = gi | plus: 1 -%}
-              <a class="agc-tile" href="{{ routes.collections_url }}/{{ h }}/{{ g | handleize }}"><span class="agc-tile-img">{%- if gimg -%}{{ gimg | image_url: width: 500 | image_tag: loading: 'lazy', widths: '250, 375, 500', sizes: '(min-width: 1100px) 300px, 50vw', alt: '' }}{%- endif -%}</span><span class="agc-tile-body"><span class="agc-num">{{ gi }}</span><strong>{{ g }}</strong><em>{{ gn }} {% if gn == 1 %}product{% else %}products{% endif %}</em></span></a>
+              <a class="agc-tile" href="{{ routes.collections_url }}/{{ h }}?group={{ g | handleize }}"><span class="agc-tile-img">{%- if gimg -%}{{ gimg | image_url: width: 500 | image_tag: loading: 'lazy', widths: '250, 375, 500', sizes: '(min-width: 1100px) 300px, 50vw', alt: '' }}{%- endif -%}</span><span class="agc-tile-body"><span class="agc-num">{{ gi }}</span><strong>{{ g }}</strong><em>{{ gn }} {% if gn == 1 %}product{% else %}products{% endif %}</em></span></a>
             {%- endfor -%}
           {%- endcapture -%}
           {%- assign tiles = tiles | strip -%}
@@ -141,22 +141,22 @@
           {%- assign gi = gi | plus: 1 -%}
           {%- assign gh = g | handleize -%}
           {%- if agc_mode == 'group' and gh == agc_cur -%}{%- assign cur_title = g -%}{%- assign cur_desc = gdescs[forloop.index0] -%}{%- endif -%}
-          <a href="{% if agc_mode == 'group' %}{{ routes.collections_url }}/{{ h }}/{{ gh }}{% else %}#{{ gh }}{% endif %}"{% if agc_mode == 'group' and gh == agc_cur %} aria-current="page"{% endif %}><span class="agc-num">{{ gi }}</span>{{ g }}{% if gn > 0 %}<em>{{ gn }}</em>{% endif %}</a>
+          <a href="{{ routes.collections_url }}/{{ h }}?group={{ gh }}" data-agc-chip="{{ gh }}"{% if agc_mode == 'group' and gh == agc_cur %} aria-current="page"{% endif %}><span class="agc-num">{{ gi }}</span>{{ g }}{% if gn > 0 %}<em>{{ gn }}</em>{% endif %}</a>
         {%- endfor -%}
       {%- endcapture -%}
       {%- assign chips = chips | strip -%}
       <section class="agc-hero agc-hero-compact">
         <div class="agc-shell">
-          <nav class="agc-crumbs" aria-label="Breadcrumb"><a href="{{ routes.root_url }}">Home</a><span aria-hidden="true">/</span><a href="{{ agc_shop_url }}">Shop</a><span aria-hidden="true">/</span>{%- if agc_mode == 'group' -%}<a href="{{ collection.url }}">{{ st }}</a><span aria-hidden="true">/</span><span aria-current="page">{{ cur_title | default: current_tags.first }}</span>{%- else -%}<span aria-current="page">{{ st }}</span>{%- endif -%}</nav>
+          <nav class="agc-crumbs" aria-label="Breadcrumb"><a href="{{ routes.root_url }}">Home</a><span aria-hidden="true">/</span><a href="{{ agc_shop_url }}">Shop</a><span aria-hidden="true">/</span>{%- if agc_mode == 'group' -%}<a href="{{ collection.url }}">{{ st }}</a><span aria-hidden="true">/</span><span aria-current="page">{{ cur_title | default: current_tags.first }}</span>{%- else -%}<span aria-current="page" data-agc-crumb>{{ st }}</span>{%- endif -%}</nav>
           {%- render 'ag-catalog-systems', sys_handles: sys_handles, sys_titles: sys_titles, current: h -%}
           {%- if agc_mode == 'group' -%}
             <p class="agc-eyebrow">{{ st }}</p>
             <h1>{{ cur_title | default: current_tags.first }}</h1>
             <p class="agc-lead">{% if cur_desc != blank and cur_desc != '-' %}{{ cur_desc }} &middot; {% endif %}Part of our {{ st }} range.</p>
           {%- else -%}
-            <p class="agc-eyebrow">{% if chips != blank %}Price list &middot; {{ gi }} groups{% else %}{{ collection.products_count }} products{% endif %}</p>
-            <h1>{% if collection.handle == 'pergola' %}Pergola &amp; Patio Cover Kits{% else %}{{ st }}{% endif %}</h1>
-            <p class="agc-lead">{{ sys_leads[agc_sys] }}</p>
+            <p class="agc-eyebrow" data-agc-eyebrow>{% if chips != blank %}Price list &middot; {{ gi }} groups{% else %}{{ collection.products_count }} products{% endif %}</p>
+            <h1 data-agc-h1>{% if collection.handle == 'pergola' %}Pergola &amp; Patio Cover Kits{% else %}{{ st }}{% endif %}</h1>
+            <p class="agc-lead" data-agc-lead>{{ sys_leads[agc_sys] }}</p>
           {%- endif -%}
         </div>
       </section>
@@ -171,7 +171,14 @@
               {%- render 'ag-catalog-card', product: collection.products[idx] -%}
             {%- endfor -%}
           </div>
-          {%- if collection.products.size == 0 -%}<p class="agc-empty">There are no products in this group right now. <a href="{{ agc_shop_url }}">Back to the shop</a></p>{%- endif -%}
+          {%- if collection.products.size == 0 -%}
+            {%- if agc_mode == 'group' -%}
+              <p class="agc-empty"><a href="{{ collection.url }}?group={{ agc_cur }}">Show this group</a></p>
+              <script>location.replace({{ collection.url | append: '?group=' | append: agc_cur | json }});</script>
+            {%- else -%}
+              <p class="agc-empty">There are no products in this group right now. <a href="{{ agc_shop_url }}">Back to the shop</a></p>
+            {%- endif -%}
+          {%- endif -%}
         {%- else -%}
           {%- assign gi = 0 -%}
           {%- for g in groups -%}
@@ -181,10 +188,10 @@
             {%- if gn == 0 -%}{%- continue -%}{%- endif -%}
             {%- assign gi = gi | plus: 1 -%}
             {%- assign gd = gdescs[forloop.index0] -%}
-            <section class="agc-group" id="{{ g | handleize }}">
+            <section class="agc-group" id="{{ g | handleize }}" data-agc-group="{{ g | handleize }}" data-agc-title="{{ g | escape }}" data-agc-desc="{% if gd != blank and gd != '-' %}{{ gd | escape }}{% endif %}">
               <header class="agc-group-head">
                 <div><span class="agc-group-num">{{ gi | prepend: '0' | slice: -2, 2 }}</span><h2>{{ g }}</h2>{% if gd != blank and gd != '-' %}<p>{{ gd }}</p>{% endif %}</div>
-                <a class="agc-group-link" href="{{ collection.url }}/{{ g | handleize }}">{{ gn }} products <span aria-hidden="true">&rarr;</span></a>
+                <a class="agc-group-link" href="{{ collection.url }}?group={{ g | handleize }}">{{ gn }} products <span aria-hidden="true">&rarr;</span></a>
               </header>
               <div class="agc-grid">
                 {%- for item in agc_order -%}
@@ -228,6 +235,30 @@
     <div class="agc-help-actions"><a class="agc-btn agc-btn-accent" href="{{ section.settings.quote_url | default: '/pages/contact' }}">Get an online quote</a><a class="agc-btn agc-btn-line" href="{{ section.settings.contact_url | default: '/pages/contact' }}">Talk to a specialist</a></div>
   </section>
 </main>
+{%- if agc_mode == 'system' -%}
+<script>
+(function () {
+  var g = new URLSearchParams(location.search).get('group');
+  if (!g) return;
+  var root = document.getElementById('agc');
+  var sec = root && root.querySelector('[data-agc-group="' + g.replace(/[^a-z0-9-]/gi, '') + '"]');
+  if (!sec) return;
+  root.querySelectorAll('[data-agc-group]').forEach(function (s) { if (s !== sec) s.hidden = true; });
+  root.querySelectorAll('[data-agc-chip]').forEach(function (a) {
+    if (a.getAttribute('data-agc-chip') === g) { a.setAttribute('aria-current', 'page'); a.scrollIntoView({ block: 'nearest', inline: 'center' }); }
+  });
+  var title = sec.getAttribute('data-agc-title'), desc = sec.getAttribute('data-agc-desc');
+  var sys = {{ st | json }}, sysUrl = {{ collection.url | json }};
+  var h1 = root.querySelector('[data-agc-h1]'), eb = root.querySelector('[data-agc-eyebrow]'), lead = root.querySelector('[data-agc-lead]'), crumb = root.querySelector('[data-agc-crumb]');
+  if (h1) h1.textContent = title;
+  if (eb) eb.textContent = sys;
+  if (lead) lead.textContent = (desc ? desc + ' \u00b7 ' : '') + 'Part of our ' + sys + ' range.';
+  if (crumb) { var a = document.createElement('a'); a.href = sysUrl; a.textContent = sys; var sep = document.createElement('span'); sep.setAttribute('aria-hidden', 'true'); sep.textContent = '/'; var cur = document.createElement('span'); cur.setAttribute('aria-current', 'page'); cur.textContent = title; crumb.replaceWith(a, sep, cur); }
+  var link = sec.querySelector('.agc-group-link'); if (link) link.hidden = true;
+  document.title = title + ' \u2013 ' + sys + ' \u2013 ' + document.title.split(' \u2013 ').pop();
+})();
+</script>
+{%- endif -%}
 {%- endpaginate -%}
 
 {% schema %}
