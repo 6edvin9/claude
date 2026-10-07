@@ -28,6 +28,8 @@ cfg = {
     '@@SYS_TITLES@@': '|'.join(liq(s['title']) for s in systems),
     '@@SYS_LEADS@@': '|'.join(liq(s['lead']) for s in systems),
     '@@SYS_GROUPS@@': '|'.join('~'.join(liq(g['tag']) for g in s['groups']) or '-' for s in systems),
+    '@@SYS_GHANDLES@@': '|'.join('~'.join(g['handle'] for g in s['groups']) or '-' for s in systems),
+    '@@SYS_GTITLES@@': '|'.join('~'.join(liq(g['wp_name']) for g in s['groups']) or '-' for s in systems),
     '@@SYS_GDESCS@@': '|'.join('~'.join(liq(g['description']) or '-' for g in s['groups']) or '-' for s in systems),
 }
 tpl = open(os.path.join(HERE, 'ag-catalog.liquid.tpl')).read()

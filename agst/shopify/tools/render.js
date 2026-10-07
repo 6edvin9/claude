@@ -69,6 +69,17 @@ const A='../theme_out/assets/';const page = (body, tpl='collection') => `<!docty
 (async () => {
   const out = path.resolve(__dirname, '../preview'); fs.mkdirSync(out, { recursive: true });
   const tpl = fs.readFileSync(path.join(T, 'sections', 'ag-catalog.liquid'), 'utf8');
+  const ctx = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../ctx.json'), 'utf8'));
+  const grpColl = {};
+  for (const sy of ctx.systems) for (const g of sy.groups) {
+    const ps = live.filter(p => p.tags.includes(g.tag));
+    grpColl[g.handle] = { id: 1, handle: g.handle, title: g.wp_name, url: '/collections/' + g.handle, products: ps, products_count: ps.length, description: '' };
+  }
+  base.collections = grpColl;
+  for (const gh of ['gate-frame-components-replacement-parts', 'fence-rails-structural-components-replacement-parts']) {
+    const html = await engine.parseAndRender(tpl, { ...base, collection: grpColl[gh], current_tags: [] });
+    fs.writeFileSync(path.join(out, 'gc-' + gh.slice(0, 20) + '.html'), page(html));
+  }
   const jobs = [['shop', 'all', null], ['gates', 'gates', null], ['fences', 'fences', null], ['pergola', 'pergola', null], ['cladding', 'wall-cladding', null], ['group-gate-frame-kits', 'gates', 'gate-frame-kits']];
   for (const [name, h, tag] of jobs) {
     const c = coll(h, tag);

@@ -42,7 +42,7 @@ def structure(b):
             if not n:
                 continue
             name = html.unescape(t['name']).replace(', ', ' · ').replace(',', ' ')  # Shopify tags cannot contain commas
-            groups.append({'wp': t['slug'], 'tag': name, 'handle': handleize(name), 'title': name,
+            groups.append({'wp': t['slug'], 'wp_name': html.unescape(t['name']), 'tag': name, 'handle': handleize(name), 'title': name,
                            'description': re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', html.unescape(t['description'] or ''))).strip()})
         systems.append({'wp': wp, 'handle': h, 'title': title, 'tag': title, 'lead': lead, 'groups': groups})
     return systems, by_slug
